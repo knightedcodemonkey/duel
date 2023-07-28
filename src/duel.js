@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import { argv } from 'node:process'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { argv, cwd } from 'node:process'
+import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { writeFile, rm } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -14,10 +13,8 @@ import { specifier } from '@knighted/specifier'
 import { init } from './init.js'
 import { getRealPathAsFileUrl, logError, log } from './util.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const root = join(__dirname, '..')
-const tsc = join(root, 'node_modules', '.bin', 'tsc')
+// TypeScript is defined as a peer dependency.
+const tsc = join(cwd(), 'node_modules', '.bin', 'tsc')
 const runBuild = project => {
   const { status, error } = spawnSync(tsc, ['-p', project], { stdio: 'inherit' })
 
