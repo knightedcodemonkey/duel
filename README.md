@@ -63,7 +63,7 @@ See the available [options](#options).
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
 
 * `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
-* `--target-ext, -x` The desired target extension which determines the type of dual build. Defaults to `.cjs`.
+* `--target-extension, -x` The desired target extension which determines the type of dual build. Defaults to `.cjs`.
 
 You can run `duel --help` to get more info. Below is the output of that:
 
