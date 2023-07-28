@@ -8,6 +8,11 @@ Node.js tool for creating a TypeScript dual package.
 
 Early stages of development. Inspired by https://github.com/microsoft/TypeScript/issues/49462.
 
+## Requirements
+
+* Node >= 16.19.0.
+* TypeScript, `npm i typescript`.
+
 ## Example
 
 First, install the package to create the `duel` executable inside your `node_modules/.bin` directory.
