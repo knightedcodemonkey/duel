@@ -1,6 +1,7 @@
 # [`@knighted/duel`](https://www.npmjs.com/package/@knighted/duel)
 
 ![CI](https://github.com/knightedcodemonkey/duel/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/knightedcodemonkey/duel/branch/main/graph/badge.svg?token=7K74BRLHFy)](https://codecov.io/gh/knightedcodemonkey/duel)
 [![NPM version](https://img.shields.io/npm/v/@knighted/duel.svg)](https://www.npmjs.com/package/@knighted/duel)
 
 Node.js tool for creating a TypeScript dual package.
