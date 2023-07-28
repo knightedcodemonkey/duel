@@ -1,0 +1,8 @@
+{
+  "targets": "node >= 16.19",
+  "presets": [
+    ["@babel/preset-env", {
+      "modules": false
+    }]
+  ]
+}

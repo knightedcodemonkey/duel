@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.5.2
+      - name: Setup Node
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: '20.5.0'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Save error log
+        uses: actions/upload-artifact@v2
+        if: ${{ failure() }}
+        with:
+          name: npm-debug-log-${{ hashFiles('package-lock.json') }}
+          path: npm-debug.log
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Report Coverage
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Pack
+        run: npm pack

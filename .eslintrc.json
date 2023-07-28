@@ -1,0 +1,25 @@
+{
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:n/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2023,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-console": "error",
+    "n/shebang": [
+      "error",
+      {
+        "convertPath": {
+          "src/*.js": ["^src/(.+)$", "dist/$1"]
+        }
+      }
+    ]
+  }
+}

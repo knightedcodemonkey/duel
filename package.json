@@ -1,0 +1,68 @@
+{
+  "name": "@knighted/duel",
+  "version": "1.0.0-alpha.0",
+  "description": "TypeScript dual packages.",
+  "type": "module",
+  "main": "dist",
+  "bin": "dist/duel.js",
+  "exports": {
+    ".": {
+      "import": "./dist/duel.js",
+      "require": "./dist/duel.cjs",
+      "default": "./dist/duel.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=16.19.0"
+  },
+  "engineStrict": true,
+  "scripts": {
+    "prettier": "prettier -w src/*.js test/*.js",
+    "lint": "eslint src/*.js test/*.js",
+    "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/*.js",
+    "build": "babel-dual-package --no-cjs-dir src",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "tsc",
+    "typescript",
+    "dual package",
+    "cjs",
+    "mjs"
+  ],
+  "files": [
+    "dist"
+  ],
+  "author": "KCM <knightedcodemonkey@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/knightedcodemonkey/duel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/knightedcodemonkey/duel/issues"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "babel-dual-package": "^1.0.0-rc.5",
+    "c8": "^8.0.1",
+    "eslint": "^8.45.0",
+    "eslint-plugin-n": "^16.0.1",
+    "prettier": "^3.0.0",
+    "typescript": "^5.2.0-dev.20230727"
+  },
+  "dependencies": {
+    "@knighted/specifier": "^1.0.0-alpha.5",
+    "glob": "^10.3.3",
+    "magic-string": "^0.30.1"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "printWidth": 90,
+    "semi": false,
+    "singleQuote": true
+  }
+}
