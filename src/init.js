@@ -41,12 +41,12 @@ const init = async args => {
     log('Usage: duel [options]\n')
     log('Options:')
     log(
-      "--project, -p \t\t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      "--project, -p \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--target-extension, -x \t\t Sets the file extension for the dual build. [.cjs,.mjs]',
+      '--target-extension, -x \t Sets the file extension for the dual build. [.cjs,.mjs]',
     )
-    log('--help, -h \t\t\t Print this message.')
+    log('--help, -h \t\t Print this message.')
   } else {
     const { project, 'target-extension': targetExt } = parsed
     let configPath = resolve(project)
