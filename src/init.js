@@ -44,7 +44,7 @@ const init = async args => {
       "--project, -p \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--target-extension, -x \t\ Sets the file extension for the dual build. [.cjs,.mjs]',
+      '--target-extension, -x \t Sets the file extension for the dual build. [.cjs,.mjs]',
     )
     log('--help, -h \t\t Print this message.')
   } else {
