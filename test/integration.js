@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 
 import { duel } from '../src/duel.js'
 
@@ -87,6 +88,13 @@ describe('duel', () => {
     assert.ok(
       spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
+    // Check that the expected files and extensions are there
+    assert.ok(existsSync(resolve(dist, 'index.js')))
+    assert.ok(existsSync(resolve(dist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(dist, 'cjs.cjs')))
+    assert.ok(existsSync(resolve(dist, 'cjs/index.cjs')))
+    assert.ok(existsSync(resolve(dist, 'cjs/index.d.cts')))
+    assert.ok(existsSync(resolve(dist, 'cjs/esm.mjs')))
   })
 
   it('reports compilation errors during a build', async t => {
