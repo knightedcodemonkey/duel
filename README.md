@@ -6,7 +6,7 @@
 
 Node.js tool for creating a TypeScript dual package.
 
-Early stages of development. Inspired by https://github.com/microsoft/TypeScript/issues/49462.
+Inspired by https://github.com/microsoft/TypeScript/issues/49462.
 
 ## Requirements
 
@@ -79,8 +79,8 @@ Options:
 
 ## Gotchas
 
-* Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well in regards to preserving module system by file extension. For instance, it will **always** create CJS exports when `--module commonjs` is used, _even on files with an `.mts` extension_, which is contrary to [how Node determines module systems](https://nodejs.org/api/packages.html#determining-module-system). The `tsc` compiler is fundamentally broken in this regard. One reference issue is https://github.com/microsoft/TypeScript/issues/54573. If you use `.mts` extensions to enforce an ESM module system, this will break in the corresponding dual CJS build. There is no way to fix this until TypeScript fixes their compiler.
+These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most project, things should just work as expected.
 
-* If targeting a dual CJS build, and you are using [top level `await`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await#top_level_await), you will most likely encounter the compilation error `error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', or 'nodenext', and the 'target' option is set to 'es2017' or higher.` during the CJS build. This is because `duel` creates a temporary `tsconfig.json` from your original and necessarily overwrites the `--module` and `--moduleResolution` based on the provided `--target-ext`. There is no workaround other than to **not** use top level await if you want a dual build.
+* Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well in regards to preserving module system by file extension. For instance, there doesn't appear to be a way to convert an arbitrary `.ts` file into another module system, _while also preserving the module system of `.mts` and `.cts` files_. In my opinion, the `tsc` compiler is fundamentally broken in this regard, and at best is enforcing usage patterns it shouldn't. If you want to see one of my extended rants on this, check out this [comment](https://github.com/microsoft/TypeScript/pull/50985#issuecomment-1656991606). This is only mentioned for transparency, `duel` will correct for this and produce files with the module system you would expect based on the files extension, so that it works with [how Node.js determines module systems](https://nodejs.org/api/packages.html#determining-module-system).
 
 * If doing an `import type` across module systems, i.e. from `.mts` into `.cts`, or vice versa, you might encounter the compilation error ``error TS1452: 'resolution-mode' assertions are only supported when `moduleResolution` is `node16` or `nodenext`.``. This is a [known issue](https://github.com/microsoft/TypeScript/issues/49055) and TypeScript currently suggests installing the nightly build, i.e. `npm i typescript@next`.

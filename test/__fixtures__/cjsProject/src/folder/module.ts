@@ -16,5 +16,5 @@ const mod: Mod = {
   }
 }
 
-export { mod }
+export { mod, cjs }
 export type { Mod }

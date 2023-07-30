@@ -2,14 +2,15 @@ import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
-import { rm } from 'node:fs/promises'
+import { rm, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 
 import { duel } from '../src/duel.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const dist = resolve(__dirname, '__fixtures__/project/dist')
+const esmDist = resolve(__dirname, '__fixtures__/esmProject/dist')
+const cjsDist = resolve(__dirname, '__fixtures__/cjsProject/dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
@@ -17,7 +18,8 @@ const rmDist = async distPath => {
 
 describe('duel', () => {
   before(async () => {
-    await rmDist(dist)
+    await rmDist(esmDist)
+    await rmDist(cjsDist)
     await rmDist(errDist)
   })
 
@@ -39,7 +41,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
     /**
      * Should error due to the cwd of this processs not being
-     * within test/__fixtures__/project.
+     * within test/__fixtures__/esmProject.
      */
     await duel()
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('is not a file or directory.'))
@@ -55,14 +57,14 @@ describe('duel', () => {
   it('reports errors when --project is not valid json', async t => {
     const spy = t.mock.method(global.console, 'log')
 
-    await duel(['-p', 'test/__fixtures__/project/tsconfig.not.json'])
+    await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.not.json'])
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('not parsable as JSON.'))
   })
 
   it('reports errors when the config in --project has no outDir', async t => {
     const spy = t.mock.method(global.console, 'log')
 
-    await duel(['-p', 'test/__fixtures__/project/tsconfig.noOutDir.json'])
+    await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.noOutDir.json'])
     assert.equal(
       spy.mock.calls[0].arguments[1],
       'You must define an `outDir` in your project config.',
@@ -80,21 +82,55 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      await rmDist(dist)
+      await rmDist(esmDist)
     })
-    await duel(['--project', 'test/__fixtures__/project', '--target-extension', '.cjs'])
+    await duel([
+      '--project',
+      'test/__fixtures__/esmProject',
+      '--target-extension',
+      '.cjs',
+    ])
 
     // Third call because of logging for starting each build.
     assert.ok(
       spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
     // Check that the expected files and extensions are there
-    assert.ok(existsSync(resolve(dist, 'index.js')))
-    assert.ok(existsSync(resolve(dist, 'index.d.ts')))
-    assert.ok(existsSync(resolve(dist, 'cjs.cjs')))
-    assert.ok(existsSync(resolve(dist, 'cjs/index.cjs')))
-    assert.ok(existsSync(resolve(dist, 'cjs/index.d.cts')))
-    assert.ok(existsSync(resolve(dist, 'cjs/esm.mjs')))
+    assert.ok(existsSync(resolve(esmDist, 'index.js')))
+    assert.ok(existsSync(resolve(esmDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs.cjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/index.cjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/index.d.cts')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/esm.mjs')))
+
+    // Check that there are no `exports.esm` statements in the .mjs file
+    const mjs = (await readFile(resolve(esmDist, 'cjs/esm.mjs'))).toString()
+
+    assert.ok(mjs.indexOf('exports.esm') === -1)
+  })
+
+  it('can be passed .mjs as a --target-extension', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(cjsDist)
+    })
+    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-x', '.mjs'])
+
+    assert.ok(
+      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual MJS build'),
+    )
+    assert.ok(existsSync(resolve(cjsDist, 'index.js')))
+    assert.ok(existsSync(resolve(cjsDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(cjsDist, 'mjs/index.mjs')))
+
+    // Check that the files are using the correct module system
+    const mjs = (await readFile(resolve(cjsDist, 'esm.mjs'))).toString()
+    const cjs = (await readFile(resolve(cjsDist, 'mjs/cjs.cjs'))).toString()
+
+    assert.ok(mjs.indexOf('exports.esm') === -1)
+    assert.ok(mjs.indexOf('export const esm') > -1)
+    assert.ok(cjs.indexOf('exports.cjs') > -1)
   })
 
   it('reports compilation errors during a build', async t => {

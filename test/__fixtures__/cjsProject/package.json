@@ -1,0 +1,18 @@
+{
+  "version": "0.0.0",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mjs/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  }
+}
