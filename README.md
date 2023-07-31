@@ -79,7 +79,7 @@ Options:
 
 ## Gotchas
 
-These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most project, things should just work as expected.
+These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most projects, things should just work as expected.
 
 As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using `tsc` while only using a single package.json file and tsconfig.json file _and_ preserving module system by file extension. The MicroSoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration.
 
