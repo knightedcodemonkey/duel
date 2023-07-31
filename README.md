@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/knightedcodemonkey/duel/branch/main/graph/badge.svg?token=7K74BRLHFy)](https://codecov.io/gh/knightedcodemonkey/duel)
 [![NPM version](https://img.shields.io/npm/v/@knighted/duel.svg)](https://www.npmjs.com/package/@knighted/duel)
 
-Node.js tool for creating a TypeScript dual package.
+Node.js tool for building a TypeScript dual package.
 
 Inspired by https://github.com/microsoft/TypeScript/issues/49462.
 
