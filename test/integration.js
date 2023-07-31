@@ -83,7 +83,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      //await rmDist(esmDist)
+      await rmDist(esmDist)
     })
     await duel([
       '--project',
@@ -114,7 +114,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      //await rmDist(cjsDist)
+      await rmDist(cjsDist)
     })
     await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-x', '.mjs'])
 
