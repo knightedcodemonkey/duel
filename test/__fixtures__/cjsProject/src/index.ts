@@ -34,6 +34,8 @@ const getUser = async () => {
   return new UserAccount("Murphy", 1, mod, esm, cjs)
 }
 
+getUser()
+
 export type { User }
 
 export { getUser }

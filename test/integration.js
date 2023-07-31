@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { rm, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 
 import { duel } from '../src/duel.js'
 
@@ -131,6 +132,20 @@ describe('duel', () => {
     assert.ok(mjs.indexOf('exports.esm') === -1)
     assert.ok(mjs.indexOf('export const esm') > -1)
     assert.ok(cjs.indexOf('exports.cjs') > -1)
+
+    // Check for now runtime errors against Node.js
+    const { status: statusCjs } = spawnSync(
+      'node',
+      ['test/__fixtures__/cjsProject/dist/index.js'],
+      { stdio: 'inherit' },
+    )
+    assert.equal(statusCjs, 0)
+    const { status: statusEsm } = spawnSync(
+      'node',
+      ['test/__fixtures__/cjsProject/dist/index.js'],
+      { stdio: 'inherit' },
+    )
+    assert.equal(statusEsm, 0)
   })
 
   it('reports compilation errors during a build', async t => {
