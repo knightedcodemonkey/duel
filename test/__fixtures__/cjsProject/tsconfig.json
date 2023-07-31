@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "NodeNext",
     "declaration": true,
     "strict": false,
     "outDir": "dist",
-    "lib": ["ES2015"]
+    "lib": ["DOM", "ES2015"]
   },
   "include": ["src"]
 }
