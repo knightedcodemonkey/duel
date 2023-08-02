@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { argv, cwd } from 'node:process'
-import { join, relative } from 'node:path'
+import { join, dirname } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { writeFile, copyFile, rm } from 'node:fs/promises'
+import { writeFile, rm, rename } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -41,15 +41,18 @@ const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, targetExt, configPath, absoluteOutDir } = ctx
+    const { projectDir, tsconfig, configPath, pkg } = ctx
     const startTime = performance.now()
 
-    log('Starting primary build...\n')
+    log('Starting primary build...')
 
     let success = runBuild(configPath)
 
     if (success) {
-      const isCjsBuild = targetExt === '.cjs'
+      const pkgDir = dirname(pkg.path)
+      const originalType = pkg.packageJson.type ?? 'commonjs'
+      const isCjsBuild = originalType !== 'commonjs'
+      const targetExt = isCjsBuild ? '.cjs' : '.mjs'
       const hex = randomBytes(4).toString('hex')
       const { outDir } = tsconfig.compilerOptions
       const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
@@ -60,16 +63,30 @@ const duel = async args => {
         compilerOptions: {
           ...tsconfig.compilerOptions,
           outDir: dualOutDir,
-          module: isCjsBuild ? 'CommonJS' : 'ESNext',
-          // Best way to make this work given how tsc works
-          moduleResolution: 'Node',
+          module: 'NodeNext',
         },
       }
+      const pkgRename = 'package.json.bak'
 
-      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual, null, 2))
-      log('Starting dual build...\n')
+      // Setup new package.json and tsconfig.json
+      await rename(pkg.path, join(pkgDir, pkgRename))
+      await writeFile(
+        pkg.path,
+        JSON.stringify({
+          version: '0.0.0',
+          type: isCjsBuild ? 'commonjs' : 'module',
+        }),
+      )
+      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
+
+      // Build dual
+      log('Starting dual build...')
       success = runBuild(dualConfigPath)
+
+      // Cleanup and restore
       await rm(dualConfigPath, { force: true })
+      await rm(pkg.path, { force: true })
+      await rename(join(pkgDir, pkgRename), pkg.path)
 
       if (success) {
         const absoluteDualOutDir = join(projectDir, dualOutDir)
@@ -97,59 +114,10 @@ const duel = async args => {
           await rm(filename, { force: true })
         }
 
-        /**
-         * This is a fix for tsc compiler which doesn't seem to support
-         * converting an arbitrary `.ts` file, into another module system,
-         * while also preserving the module systems of `.mts` and `.cts` files.
-         *
-         * Hopefully it can be removed when TS updates their supported options,
-         * or at least how the combination of `--module` and `--moduleResolution`
-         * currently work.
-         *
-         * @see https://github.com/microsoft/TypeScript/pull/50985#issuecomment-1656991606
-         */
-        if (isCjsBuild) {
-          const mjsFiles = await glob(`${absoluteOutDir}/**/*.mjs`, {
-            ignore: ['node_modules/**', `${absoluteDualOutDir}/**`],
-          })
-
-          for (const filename of mjsFiles) {
-            const relativeFn = relative(absoluteOutDir, filename)
-
-            await copyFile(filename, join(absoluteDualOutDir, relativeFn))
-          }
-        } else {
-          const cjsFiles = await glob(`${absoluteOutDir}/**/*.cjs`, {
-            ignore: ['node_modules/**', `${absoluteDualOutDir}/**`],
-          })
-
-          for (const filename of cjsFiles) {
-            const relativeFn = relative(absoluteOutDir, filename)
-
-            await copyFile(filename, join(absoluteDualOutDir, relativeFn))
-          }
-
-          /**
-           * Now copy the good .mjs files from the dual out dir
-           * to the original out dir, but build the file path
-           * from the original out dir to distinguish from the
-           * dual build .mjs files.
-           */
-          const mjsFiles = await glob(`${absoluteOutDir}/**/*.mjs`, {
-            ignore: ['node_modules/**', `${absoluteDualOutDir}/**`],
-          })
-
-          for (const filename of mjsFiles) {
-            const relativeFn = relative(absoluteOutDir, filename)
-
-            await copyFile(join(absoluteDualOutDir, relativeFn), filename)
-          }
-        }
-
         log(
-          `Successfully created a dual ${targetExt
-            .replace('.', '')
-            .toUpperCase()} build in ${Math.round(performance.now() - startTime)}ms.`,
+          `Successfully created a dual ${
+            isCjsBuild ? 'CJS' : 'ESM'
+          } build in ${Math.round(performance.now() - startTime)}ms.`,
         )
       }
     }

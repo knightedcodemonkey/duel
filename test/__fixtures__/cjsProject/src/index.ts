@@ -30,8 +30,9 @@ class UserAccount {
 
 const getUser = async () => {
   const { esm } = await import('./esm.mjs')
+  const user = new UserAccount("Murphy", 1, mod, esm, cjs)
 
-  return new UserAccount("Murphy", 1, mod, esm, cjs)
+  return user
 }
 
 getUser()

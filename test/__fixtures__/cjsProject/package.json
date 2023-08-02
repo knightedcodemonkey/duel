@@ -5,7 +5,7 @@
     ".": {
       "import": {
         "types": "./dist/mjs/index.d.mts",
-        "default": "./dist/index.mjs"
+        "default": "./dist/mjs/index.mjs"
       },
       "require": {
         "types": "./dist/index.d.ts",

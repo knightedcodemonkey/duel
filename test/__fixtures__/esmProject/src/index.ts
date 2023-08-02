@@ -1,16 +1,14 @@
-import { mod } from "./folder/module.js";
-import { esm } from './esm.mjs'
+import { mod } from "./folder/module.js"
 import { cjs } from './cjs.cjs'
 
-import type { Mod } from "./folder/module.js";
-import type { ESM } from './esm.mjs'
-import type { CJS } from "./cjs.cjs";
+import type { Mod } from "./folder/module.js"
+import type { CJS } from "./cjs.cjs"
 
 interface User {
   name: string;
   id: number;
   mod: Mod;
-  esm: ESM;
+  esm: any;
   cjs: CJS;
 }
 
@@ -18,10 +16,10 @@ class UserAccount {
   name: string;
   id: number;
   mod: Mod;
-  esm: ESM;
+  esm: any;
   cjs: CJS;
 
-  constructor(name: string, id: number, mod: Mod, esm: ESM, cjs: CJS) {
+  constructor(name: string, id: number, mod: Mod, esm: any, cjs: CJS) {
     this.name = name;
     this.id = id;
     this.mod = mod;
@@ -30,8 +28,15 @@ class UserAccount {
   }
 }
 
-const user: User = new UserAccount("Murphy", 1, mod, esm, cjs);
+const getUser = async () => {
+  const { esm } = await import('./esm.mjs')
+  const user = new UserAccount("Murphy", 1, mod, esm, cjs)
+
+  return user
+}
+
+getUser()
 
 export type { User }
 
-export { user }
+export { getUser }

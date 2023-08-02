@@ -1,11 +1,13 @@
+import { cwd } from 'node:process'
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { stat, readFile } from 'node:fs/promises'
 
+import { readPackageUp } from 'read-pkg-up'
+
 import { logError, log } from './util.js'
 
 const init = async args => {
-  const validTargetExts = ['.cjs', '.mjs']
   let parsed = null
 
   try {
@@ -20,7 +22,12 @@ const init = async args => {
         'target-extension': {
           type: 'string',
           short: 'x',
-          default: '.cjs',
+          default: '',
+        },
+        'pkg-dir': {
+          type: 'string',
+          short: 'k',
+          default: cwd(),
         },
         help: {
           type: 'boolean',
@@ -41,21 +48,30 @@ const init = async args => {
     log('Usage: duel [options]\n')
     log('Options:')
     log(
-      "--project, -p \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      "--project, -p \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--target-extension, -x \t Sets the file extension for the dual build. [.cjs,.mjs]',
+      '--pkg-dir, -k \t The directory to start looking for a package.json file. Defaults to cwd.',
     )
-    log('--help, -h \t\t Print this message.')
+    log('--help, -h \t Print this message.')
   } else {
-    const { project, 'target-extension': targetExt } = parsed
+    const { project, 'target-extension': targetExt, 'pkg-dir': pkgDir } = parsed
     let configPath = resolve(project)
     let stats = null
+    let pkg = null
 
-    if (!validTargetExts.includes(targetExt)) {
+    if (targetExt) {
       logError(
-        `Invalid arg '${targetExt}' for --target-extension. Must be one of ${validTargetExts.toString()}`,
+        '--target-extension is deprecated. Define "type" in your package.json instead and the dual build will be inferred from that.',
       )
+
+      return false
+    }
+
+    pkg = await readPackageUp({ cwd: pkgDir })
+
+    if (!pkg) {
+      logError('No package.json file found.')
 
       return false
     }
@@ -106,11 +122,10 @@ const init = async args => {
       const projectDir = dirname(configPath)
 
       return {
+        pkg,
         tsconfig,
-        targetExt,
         projectDir,
         configPath,
-        absoluteOutDir: resolve(projectDir, tsconfig.compilerOptions.outDir),
       }
     }
   }
