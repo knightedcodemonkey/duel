@@ -48,12 +48,12 @@ const init = async args => {
     log('Usage: duel [options]\n')
     log('Options:')
     log(
-      "--project, -p \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      "--project, -p \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--pkg-dir, -k \t\t The directory to start looking for a package.json file. Defaults to cwd.',
+      '--pkg-dir, -k \t The directory to start looking for a package.json file. Defaults to cwd.',
     )
-    log('--help, -h \t\t Print this message.')
+    log('--help, -h \t Print this message.')
   } else {
     const { project, 'target-extension': targetExt, 'pkg-dir': pkgDir } = parsed
     let configPath = resolve(project)

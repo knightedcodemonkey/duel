@@ -74,16 +74,16 @@ You can run `duel --help` to get the same info. Below is the output of that:
 Usage: duel [options]
 
 Options:
---project, -p 		 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
---pkg-dir, -k 		 The directory to start looking for a package.json file. Defaults to cwd.
---help, -h 		 Print this message.
+--project, -p 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
+--pkg-dir, -k 	 The directory to start looking for a package.json file. Defaults to cwd.
+--help, -h 	 Print this message.
 ```
 
 ## Gotchas
 
 These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most projects, things should just work as expected.
 
-As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while only using **one package.json** file and **one tsconfig.json** file _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers.
+As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while using only **one package.json** file and **one tsconfig.json** file _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers.
 
 * Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well in regards to preserving module system by file extension. For instance, there doesn't appear to be a way to convert an arbitrary `.ts` file into another module system, _while also preserving the module system of `.mts` and `.cts` files_ without using **multiple** package.json files. In my opinion, the `tsc` compiler is fundamentally broken in this regard, and at best is enforcing usage patterns it shouldn't.  This is only mentioned for transparency, `duel` will correct for this and produce files with the module system you would expect based on the files extension, so that it works with [how Node.js determines module systems](https://nodejs.org/api/packages.html#determining-module-system).
 

@@ -55,7 +55,7 @@
     "typescript": "^5.2.0-dev.20230727"
   },
   "dependencies": {
-    "@knighted/specifier": "^1.0.0-alpha.5",
+    "@knighted/specifier": "^1.0.0-rc.0",
     "glob": "^10.3.3",
     "read-pkg-up": "^10.0.0"
   },
