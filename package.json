@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.0-rc.0",
+  "version": "1.0.0-rc.1",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -56,7 +56,8 @@
   },
   "dependencies": {
     "@knighted/specifier": "^1.0.0-alpha.5",
-    "glob": "^10.3.3"
+    "glob": "^10.3.3",
+    "read-pkg-up": "^10.0.0"
   },
   "prettier": {
     "arrowParens": "avoid",
