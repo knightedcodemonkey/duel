@@ -10,8 +10,10 @@ import { duel } from '../src/duel.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
+const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
@@ -21,6 +23,7 @@ const rmDist = async distPath => {
 
 describe('duel', () => {
   before(async () => {
+    await rmDist(proDist)
     await rmDist(esmDist)
     await rmDist(cjsDist)
     await rmDist(errDist)
@@ -140,11 +143,11 @@ describe('duel', () => {
     )
     assert.ok(existsSync(resolve(cjsDist, 'index.js')))
     assert.ok(existsSync(resolve(cjsDist, 'index.d.ts')))
-    assert.ok(existsSync(resolve(cjsDist, 'mjs/index.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/index.mjs')))
 
     // Check that the files are using the correct module system
     const mjs = (await readFile(resolve(cjsDist, 'esm.mjs'))).toString()
-    const cjs = (await readFile(resolve(cjsDist, 'mjs/cjs.cjs'))).toString()
+    const cjs = (await readFile(resolve(cjsDist, 'esm/cjs.cjs'))).toString()
 
     assert.ok(mjs.indexOf('exports.esm') === -1)
     assert.ok(mjs.indexOf('export const esm') > -1)
@@ -159,10 +162,25 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
     const { status: statusEsm } = spawnSync(
       'node',
-      ['test/__fixtures__/cjsProject/dist/mjs/index.mjs'],
+      ['test/__fixtures__/cjsProject/dist/esm/index.mjs'],
       { stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
+  })
+
+  it('supports both builds output to directories', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(proDist)
+    })
+    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '-k', project, '-d'])
+
+    assert.ok(
+      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+    )
+    assert.ok(existsSync(resolve(proDist, 'esm/index.js')))
+    assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
 
   it('reports compilation errors during a build', async t => {

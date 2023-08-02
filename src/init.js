@@ -29,6 +29,11 @@ const init = async args => {
           short: 'k',
           default: cwd(),
         },
+        dirs: {
+          type: 'boolean',
+          short: 'd',
+          default: false,
+        },
         help: {
           type: 'boolean',
           short: 'h',
@@ -48,14 +53,15 @@ const init = async args => {
     log('Usage: duel [options]\n')
     log('Options:')
     log(
-      "--project, -p \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      "--project, -p [path] \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--pkg-dir, -k \t The directory to start looking for a package.json file. Defaults to cwd.',
+      '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to cwd.',
     )
-    log('--help, -h \t Print this message.')
+    log('--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].')
+    log('--help, -h \t\t Print this message.')
   } else {
-    const { project, 'target-extension': targetExt, 'pkg-dir': pkgDir } = parsed
+    const { project, 'target-extension': targetExt, 'pkg-dir': pkgDir, dirs } = parsed
     let configPath = resolve(project)
     let stats = null
     let pkg = null
@@ -123,6 +129,7 @@ const init = async args => {
 
       return {
         pkg,
+        dirs,
         tsconfig,
         projectDir,
         configPath,
