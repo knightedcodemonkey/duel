@@ -103,7 +103,7 @@ These are definitely edge cases, and would only really come up if your project m
 
 * If doing an `import type` across module systems, i.e. from `.mts` into `.cts`, or vice versa, you might encounter the compilation error ``error TS1452: 'resolution-mode' assertions are only supported when `moduleResolution` is `node16` or `nodenext`.``. This is a [known issue](https://github.com/microsoft/TypeScript/issues/49055) and TypeScript currently suggests installing the nightly build, i.e. `npm i typescript@next`.
 
-* If running `duel` with your project's package.json file open in your editor, you may temporarilly see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
+* If running `duel` with your project's package.json file open in your editor, you may temporarily see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
 
 ## Notes
 
