@@ -15,7 +15,6 @@ Node.js tool for building a TypeScript dual package.
 ## Requirements
 
 * Node >= 16.19.0.
-* A package.json with `type` defined.
 * A tsconfig.json with `outDir` defined.
 
 ## Example
@@ -31,10 +30,9 @@ Then, given a `package.json` that defines `"type": "module"` and  a `tsconfig.js
 ```json
 {
   "compilerOptions": {
-    "module": "NodeNext",
     "declaration": true,
-    "outDir": "dist",
-    "strict": true,
+    "module": "NodeNext",
+    "outDir": "dist"
   },
   "include": ["src"]
 }
@@ -99,12 +97,14 @@ Options:
 
 These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most projects, things should just work as expected.
 
-As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while using only **one package.json** file and **one tsconfig.json** file, _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers.
-
 * This is going to work best if your CJS-first project uses file extensions in their _relative_ specifiers. This is completely acceptable in CJS projects, and [required in ESM projects](https://nodejs.org/api/esm.html#import-specifiers). This package makes no attempt to rewrite bare specifiers, or remap any relative specifiers to a directory index.
 
-* Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well in regards to preserving module system by file extension. For instance, there doesn't appear to be a way to convert an arbitrary `.ts` file into another module system, _while also preserving the module system of `.mts` and `.cts` files_ without requiring **multiple** package.json files. In my opinion, the `tsc` compiler is fundamentally broken in this regard, and at best is enforcing usage patterns it shouldn't.  This is only mentioned for transparency, `duel` will correct for this and produce files with the module system you would expect based on the file's extension, so that it works with [how Node.js determines module systems](https://nodejs.org/api/packages.html#determining-module-system).
+* Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well in regards to preserving module system by file extension. For instance, there doesn't appear to be a way to convert an arbitrary `.ts` file into another module system, _while also preserving the module system of `.mts` and `.cts` files_, without requiring **multiple** package.json files. In my opinion, the `tsc` compiler is fundamentally broken in this regard, and at best is enforcing usage patterns it shouldn't.  This is only mentioned for transparency, `duel` will correct for this and produce files with the module system you would expect based on the file's extension, so that it works with [how Node.js determines module systems](https://nodejs.org/api/packages.html#determining-module-system).
 
 * If doing an `import type` across module systems, i.e. from `.mts` into `.cts`, or vice versa, you might encounter the compilation error ``error TS1452: 'resolution-mode' assertions are only supported when `moduleResolution` is `node16` or `nodenext`.``. This is a [known issue](https://github.com/microsoft/TypeScript/issues/49055) and TypeScript currently suggests installing the nightly build, i.e. `npm i typescript@next`.
 
 * If running `duel` with your project's package.json file open in your editor, you may temporarilly see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
+
+## Notes
+
+As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while using only **one package.json** file and **one tsconfig.json** file, _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers. The downside of their decisions, and the fact that npm does not support using alternative names for the package.json file, is that this project can not run both builds in parallel.
