@@ -14,8 +14,9 @@ import { init } from './init.js'
 import { getRealPathAsFileUrl, logError, log } from './util.js'
 
 const tsc = join(cwd(), 'node_modules', '.bin', 'tsc')
-const runBuild = project => {
-  const { status, error } = spawnSync(tsc, ['-p', project], { stdio: 'inherit' })
+const runBuild = (project, outDir) => {
+  const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
+  const { status, error } = spawnSync(tsc, args, { stdio: 'inherit' })
 
   if (error) {
     logError(`Failed to compile: ${error.message}`)
@@ -41,22 +42,29 @@ const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, configPath, pkg } = ctx
-    const startTime = performance.now()
+    const { projectDir, tsconfig, configPath, dirs, pkg } = ctx
+    const pkgDir = dirname(pkg.path)
+    const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
+    const originalType = pkg.packageJson.type ?? 'commonjs'
+    const isCjsBuild = originalType !== 'commonjs'
 
     log('Starting primary build...')
 
-    let success = runBuild(configPath)
+    const startTime = performance.now()
+    let success = runBuild(
+      configPath,
+      dirs
+        ? isCjsBuild
+          ? join(projectDir, outDir, 'esm')
+          : join(projectDir, outDir, 'cjs')
+        : undefined,
+    )
 
     if (success) {
-      const pkgDir = dirname(pkg.path)
-      const originalType = pkg.packageJson.type ?? 'commonjs'
-      const isCjsBuild = originalType !== 'commonjs'
       const targetExt = isCjsBuild ? '.cjs' : '.mjs'
       const hex = randomBytes(4).toString('hex')
-      const { outDir } = tsconfig.compilerOptions
       const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
-      const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'mjs')
+      const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
       // Using structuredClone() would require node >= 17.0.0
       const tsconfigDual = {
         ...tsconfig,
@@ -64,16 +72,22 @@ const duel = async args => {
           ...tsconfig.compilerOptions,
           outDir: dualOutDir,
           module: 'NodeNext',
+          moduleResolution: 'NodeNext',
         },
       }
       const pkgRename = 'package.json.bak'
 
-      // Setup new package.json and tsconfig.json
+      /**
+       * Create a new package.json with updated `type` field.
+       * Create a new tsconfig.json.
+       *
+       * The need to create a new package.json makes doing
+       * the builds in parallel difficult.
+       */
       await rename(pkg.path, join(pkgDir, pkgRename))
       await writeFile(
         pkg.path,
         JSON.stringify({
-          version: '0.0.0',
           type: isCjsBuild ? 'commonjs' : 'module',
         }),
       )
@@ -102,7 +116,7 @@ const duel = async args => {
           const code = await specifier.update(filename, ({ value }) => {
             // Collapse any BinaryExpression or NewExpression to test for a relative specifier
             const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
-            const relative = /^(?:\.|\.\.)\//i
+            const relative = /^(?:\.|\.\.)\//
 
             if (relative.test(collapsed)) {
               // $2 is for any closing quotation/parens around BE or NE
