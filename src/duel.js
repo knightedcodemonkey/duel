@@ -98,8 +98,6 @@ const duel = async args => {
       )
     }
 
-    await rm(absoluteOutDir, { force: true, recursive: true })
-
     if (parallel) {
       const paraName = `_${hex}_`
       const paraParent = join(projectDir, '..')
@@ -174,7 +172,9 @@ const duel = async args => {
 
         await updateSpecifiersAndFileExtensions(filenames)
         // Copy over and cleanup
-        await rename(absoluteDualOutDir, join(absoluteOutDir, isCjsBuild ? 'cjs' : 'esm'))
+        await cp(absoluteDualOutDir, join(absoluteOutDir, isCjsBuild ? 'cjs' : 'esm'), {
+          recursive: true,
+        })
         await rm(paraTempDir, { force: true, recursive: true })
 
         logSuccess(startTime)
