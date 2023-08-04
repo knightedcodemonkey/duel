@@ -132,7 +132,7 @@ const init = async args => {
       }
 
       if (!tsconfig.compilerOptions?.outDir) {
-        log('No `outDir` defined in tsconfig.json. Build output will be in "dist".')
+        log('No outDir defined in tsconfig.json. Build output will be in "dist".')
       }
 
       const projectDir = dirname(configPath)
