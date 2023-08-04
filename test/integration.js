@@ -4,16 +4,18 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import { rm, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execSync } from 'node:child_process'
 
 import { duel } from '../src/duel.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const project = resolve(__dirname, '__fixtures__/project')
+const parallel = resolve(__dirname, '__fixtures__/parallel')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const proDist = join(project, 'dist')
+const paraDist = join(parallel, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
@@ -27,6 +29,7 @@ describe('duel', () => {
     await rmDist(esmDist)
     await rmDist(cjsDist)
     await rmDist(errDist)
+    await rmDist(paraDist)
   })
 
   it('prints options help', async t => {
@@ -168,6 +171,21 @@ describe('duel', () => {
     assert.equal(statusEsm, 0)
   })
 
+  it('supports running builds in parallel', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(paraDist)
+    })
+    await duel(['-p', parallel, '-k', parallel, '-l', '-d'])
+
+    assert.ok(
+      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+    )
+    assert.ok(existsSync(resolve(paraDist, 'esm/index.js')))
+    assert.ok(existsSync(resolve(paraDist, 'cjs/index.cjs')))
+  })
+
   it('supports both builds output to directories', async t => {
     const spy = t.mock.method(global.console, 'log')
 
@@ -181,6 +199,12 @@ describe('duel', () => {
     )
     assert.ok(existsSync(resolve(proDist, 'esm/index.js')))
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
+  })
+
+  it('works as a cli script', async () => {
+    const resp = execSync('./src/duel.js -h', { cwd: resolve(__dirname, '..') })
+
+    assert.ok(resp.toString().indexOf('Options:') > -1)
   })
 
   it('reports compilation errors during a build', async t => {
