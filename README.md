@@ -8,9 +8,10 @@ Node.js tool for building a TypeScript dual package.
 
 ## Features
 
-* Bidirectional ESM <--> CJS dual builds inferred from the package.json `type`.
+* Bidirectional ESM ↔️ CJS dual builds inferred from the package.json `type`.
 * Correctly preserves module systems for `.mts` and `.cts` file extensions.
-* Only one package.json and tsconfig.json needed.
+* Use only one package.json and tsconfig.json.
+* Run builds in parallel.
 
 ## Requirements
 
@@ -68,7 +69,18 @@ If you prefer to have both builds in directories inside of your defined `outDir`
 
 Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `dist/cjs` directories.
 
-See the available [options](#options).
+
+### Parallel builds
+
+For a slightly faster build, you can run them in parallel. This is experimental, as your mileage may vary based on the size of your `node_modules` directory.
+
+```json
+"scripts": {
+  "build": "duel --parallel"
+}
+```
+
+You _might_ save an extra few seconds from your builds, but not much more. This requires first copying your project to a parent directory of `--project` if it exists as a writable folder. Common [gitignored directories for Node.js projects](https://github.com/github/gitignore/blob/main/Node.gitignore) are not copied, with the exception of `node_modules`. See the [notes](#notes) as to why this can't be improved much further.
 
 ## Options
 
@@ -77,6 +89,7 @@ The available options are limited, because you should define most of them inside
 * `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
 * `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to the cwd.
 * `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defalts to `false`.
+* `--parallel, -l` Run the builds in parallel.
 
 You can run `duel --help` to get the same info. Below is the output of that:
 
@@ -84,12 +97,10 @@ You can run `duel --help` to get the same info. Below is the output of that:
 Usage: duel [options]
 
 Options:
-Usage: duel [options]
-
-Options:
 --project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
 --pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to cwd.
 --dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
+--parallel, -l 		 Run the builds in parallel.
 --help, -h 		 Print this message.
 ```
 
@@ -107,4 +118,5 @@ These are definitely edge cases, and would only really come up if your project m
 
 ## Notes
 
-As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while using only **one package.json** file and **one tsconfig.json** file, _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers. The downside of their decisions, and the fact that npm does not support using alternative names for the package.json file, is that this project can not run both builds in parallel.
+As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using only `tsc` while using only **one package.json** file and **one tsconfig.json** file, _and also_ preserving module system by file extension. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/issues/54593) [talking](https://github.com/microsoft/TypeScript/pull/54546) about dual build support, but their philosophy is mainly one of self perseverance, rather than collaboration. For instance, they continue to refuse to rewrite specifiers. The downside of their decisions, and the fact that `npm` does not support using alternative names for the package.json file, is that `duel` must copy your project
+directory before attempting to run the builds in parallel.

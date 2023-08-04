@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { argv, cwd } from 'node:process'
-import { join, dirname } from 'node:path'
-import { spawnSync } from 'node:child_process'
-import { writeFile, rm, rename } from 'node:fs/promises'
+import { join, dirname, resolve } from 'node:path'
+import { spawn } from 'node:child_process'
+import { writeFile, rm, cp, rename, stat, access, constants } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -15,58 +15,40 @@ import { getRealPathAsFileUrl, logError, log } from './util.js'
 
 const tsc = join(cwd(), 'node_modules', '.bin', 'tsc')
 const runBuild = (project, outDir) => {
-  const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-  const { status, error } = spawnSync(tsc, args, { stdio: 'inherit' })
+  return new Promise((resolve, reject) => {
+    const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
+    const build = spawn(tsc, args, { stdio: 'inherit' })
 
-  if (error) {
-    logError(`Failed to compile: ${error.message}`)
+    build.on('error', err => {
+      reject(new Error(`Failed to compile: ${err.message}`))
+    })
 
-    return false
-  }
+    build.on('close', code => {
+      if (code === null) {
+        return reject(new Error('Failed to compile.'))
+      }
 
-  if (status === null) {
-    logError(`Failed to compile. The process was terminated.`)
+      if (code > 0) {
+        return reject(new Error('Compilation errors found.'))
+      }
 
-    return false
-  }
-
-  if (status > 0) {
-    logError('Compilation errors found.')
-
-    return false
-  }
-
-  return true
+      resolve(code)
+    })
+  })
 }
 const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, configPath, dirs, pkg } = ctx
+    const { projectDir, tsconfig, configPath, parallel, dirs, pkg } = ctx
     const pkgDir = dirname(pkg.path)
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
     const originalType = pkg.packageJson.type ?? 'commonjs'
     const isCjsBuild = originalType !== 'commonjs'
-
-    log('Starting primary build...')
-
-    const startTime = performance.now()
-    let success = runBuild(
-      configPath,
-      dirs
-        ? isCjsBuild
-          ? join(projectDir, outDir, 'esm')
-          : join(projectDir, outDir, 'cjs')
-        : undefined,
-    )
-
-    if (success) {
-      const targetExt = isCjsBuild ? '.cjs' : '.mjs'
-      const hex = randomBytes(4).toString('hex')
-      const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
-      const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
-      // Using structuredClone() would require node >= 17.0.0
-      const tsconfigDual = {
+    const targetExt = isCjsBuild ? '.cjs' : '.mjs'
+    const hex = randomBytes(4).toString('hex')
+    const getOverrideTsConfig = dualOutDir => {
+      return {
         ...tsconfig,
         compilerOptions: {
           ...tsconfig.compilerOptions,
@@ -75,64 +57,182 @@ const duel = async args => {
           moduleResolution: 'NodeNext',
         },
       }
-      const pkgRename = 'package.json.bak'
+    }
+    const runPrimaryBuild = () => {
+      return runBuild(
+        configPath,
+        dirs
+          ? isCjsBuild
+            ? join(projectDir, outDir, 'esm')
+            : join(projectDir, outDir, 'cjs')
+          : undefined,
+      )
+    }
+    const updateSpecifiersAndFileExtensions = async filenames => {
+      for (const filename of filenames) {
+        const dts = /(\.d\.ts)$/
+        const outFilename = dts.test(filename)
+          ? filename.replace(dts, isCjsBuild ? '.d.cts' : '.d.mts')
+          : filename.replace(/\.js$/, targetExt)
+        const code = await specifier.update(filename, ({ value }) => {
+          // Collapse any BinaryExpression or NewExpression to test for a relative specifier
+          const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
+          const relative = /^(?:\.|\.\.)\//
 
-      /**
-       * Create a new package.json with updated `type` field.
-       * Create a new tsconfig.json.
-       *
-       * The need to create a new package.json makes doing
-       * the builds in parallel difficult.
-       */
-      await rename(pkg.path, join(pkgDir, pkgRename))
+          if (relative.test(collapsed)) {
+            // $2 is for any closing quotation/parens around BE or NE
+            return value.replace(/(.+)\.js([)'"`]*)?$/, `$1${targetExt}$2`)
+          }
+        })
+
+        await writeFile(outFilename, code)
+        await rm(filename, { force: true })
+      }
+    }
+    const logSuccess = start => {
+      log(
+        `Successfully created a dual ${isCjsBuild ? 'CJS' : 'ESM'} build in ${Math.round(
+          performance.now() - start,
+        )}ms.`,
+      )
+    }
+
+    if (parallel) {
+      const paraName = `_${hex}_`
+      const paraParent = join(projectDir, '..')
+      const paraTempDir = join(paraParent, paraName)
+      let isDirWritable = true
+
+      try {
+        const stats = await stat(paraParent)
+
+        if (stats.isDirectory()) {
+          await access(paraParent, constants.W_OK)
+        } else {
+          isDirWritable = false
+        }
+      } catch {
+        isDirWritable = false
+      }
+
+      if (!isDirWritable) {
+        logError('No writable directory to prepare parallel builds. Exiting.')
+        return
+      }
+
+      log('Preparing parallel build...')
+
+      await cp(projectDir, paraTempDir, {
+        recursive: true,
+        /**
+         * Ignore common .gitignored directories in Node.js projects.
+         * Except node_modules.
+         *
+         * @see https://github.com/github/gitignore/blob/main/Node.gitignore
+         */
+        filter: src =>
+          !/logs|pids|lib-cov|coverage|bower_components|build|dist|jspm_packages|web_modules|out|\.next|\.tsbuildinfo|\.npm|\.node_repl_history|\.tgz|\.yarn|\.pnp|\.nyc_output|\.grunt/i.test(
+            src,
+          ),
+      })
+
+      const dualConfigPath = join(paraTempDir, 'tsconfig.json')
+      const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
+      const tsconfigDual = getOverrideTsConfig(dualOutDir)
+
+      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
       await writeFile(
-        pkg.path,
+        join(paraTempDir, 'package.json'),
         JSON.stringify({
           type: isCjsBuild ? 'commonjs' : 'module',
         }),
       )
-      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
 
-      // Build dual
-      log('Starting dual build...')
-      success = runBuild(dualConfigPath)
+      log('Starting parallel dual builds...')
 
-      // Cleanup and restore
-      await rm(dualConfigPath, { force: true })
-      await rm(pkg.path, { force: true })
-      await rename(join(pkgDir, pkgRename), pkg.path)
+      let success = false
+      const startTime = performance.now()
+
+      try {
+        await Promise.all([runPrimaryBuild(), runBuild(dualConfigPath)])
+        success = true
+      } catch ({ message }) {
+        logError(message)
+      }
 
       if (success) {
-        const absoluteDualOutDir = join(projectDir, dualOutDir)
+        const absoluteOutDir = resolve(projectDir, outDir)
+        const absoluteDualOutDir = join(paraTempDir, dualOutDir)
         const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
           ignore: 'node_modules/**',
         })
 
-        for (const filename of filenames) {
-          const dts = /(\.d\.ts)$/
-          const outFilename = dts.test(filename)
-            ? filename.replace(dts, isCjsBuild ? '.d.cts' : '.d.mts')
-            : filename.replace(/\.js$/, targetExt)
-          const code = await specifier.update(filename, ({ value }) => {
-            // Collapse any BinaryExpression or NewExpression to test for a relative specifier
-            const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
-            const relative = /^(?:\.|\.\.)\//
+        await updateSpecifiersAndFileExtensions(filenames)
+        // Copy over and cleanup
+        await rename(absoluteDualOutDir, join(absoluteOutDir, isCjsBuild ? 'cjs' : 'esm'))
+        await rm(paraTempDir, { force: true, recursive: true })
 
-            if (relative.test(collapsed)) {
-              // $2 is for any closing quotation/parens around BE or NE
-              return value.replace(/(.+)\.js([)'"`]*)?$/, `$1${targetExt}$2`)
-            }
-          })
+        logSuccess(startTime)
+      }
+    } else {
+      log('Starting primary build...')
 
-          await writeFile(outFilename, code)
-          await rm(filename, { force: true })
+      let success = false
+      const startTime = performance.now()
+
+      try {
+        await runPrimaryBuild()
+        success = true
+      } catch ({ message }) {
+        logError(message)
+      }
+
+      if (success) {
+        const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
+        const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
+        // Using structuredClone() would require node >= 17.0.0
+        const tsconfigDual = getOverrideTsConfig(dualOutDir)
+        const pkgRename = 'package.json.bak'
+
+        /**
+         * Create a new package.json with updated `type` field.
+         * Create a new tsconfig.json.
+         *
+         * The need to create a new package.json makes doing
+         * the builds in parallel difficult.
+         */
+        await rename(pkg.path, join(pkgDir, pkgRename))
+        await writeFile(
+          pkg.path,
+          JSON.stringify({
+            type: isCjsBuild ? 'commonjs' : 'module',
+          }),
+        )
+        await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
+
+        // Build dual
+        log('Starting dual build...')
+        try {
+          await runBuild(dualConfigPath)
+        } catch ({ message }) {
+          success = false
+          logError(message)
         }
 
-        log(
-          `Successfully created a dual ${
-            isCjsBuild ? 'CJS' : 'ESM'
-          } build in ${Math.round(performance.now() - startTime)}ms.`,
-        )
+        // Cleanup and restore
+        await rm(dualConfigPath, { force: true })
+        await rm(pkg.path, { force: true })
+        await rename(join(pkgDir, pkgRename), pkg.path)
+
+        if (success) {
+          const absoluteDualOutDir = join(projectDir, dualOutDir)
+          const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
+            ignore: 'node_modules/**',
+          })
+
+          await updateSpecifiersAndFileExtensions(filenames)
+          logSuccess(startTime)
+        }
       }
     }
   }
