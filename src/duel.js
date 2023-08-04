@@ -43,6 +43,7 @@ const duel = async args => {
     const { projectDir, tsconfig, configPath, parallel, dirs, pkg } = ctx
     const pkgDir = dirname(pkg.path)
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
+    const absoluteOutDir = resolve(projectDir, outDir)
     const originalType = pkg.packageJson.type ?? 'commonjs'
     const isCjsBuild = originalType !== 'commonjs'
     const targetExt = isCjsBuild ? '.cjs' : '.mjs'
@@ -97,6 +98,8 @@ const duel = async args => {
       )
     }
 
+    await rm(absoluteOutDir, { force: true, recursive: true })
+
     if (parallel) {
       const paraName = `_${hex}_`
       const paraParent = join(projectDir, '..')
@@ -121,6 +124,8 @@ const duel = async args => {
       }
 
       log('Preparing parallel build...')
+
+      const prepStart = performance.now()
 
       await cp(projectDir, paraTempDir, {
         recursive: true,
@@ -148,6 +153,7 @@ const duel = async args => {
         }),
       )
 
+      log(`Prepared in ${Math.round(performance.now() - prepStart)}ms.`)
       log('Starting parallel dual builds...')
 
       let success = false
@@ -161,7 +167,6 @@ const duel = async args => {
       }
 
       if (success) {
-        const absoluteOutDir = resolve(projectDir, outDir)
         const absoluteDualOutDir = join(paraTempDir, dualOutDir)
         const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
           ignore: 'node_modules/**',
@@ -190,7 +195,6 @@ const duel = async args => {
       if (success) {
         const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
         const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
-        // Using structuredClone() would require node >= 17.0.0
         const tsconfigDual = getOverrideTsConfig(dualOutDir)
         const pkgRename = 'package.json.bak'
 

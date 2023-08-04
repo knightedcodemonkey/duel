@@ -70,16 +70,6 @@ describe('duel', () => {
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('not parsable as JSON.'))
   })
 
-  it('reports errors when the config in --project has no outDir', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.noOutDir.json'])
-    assert.equal(
-      spy.mock.calls[0].arguments[1],
-      'You must define an `outDir` in your project config.',
-    )
-  })
-
   it('reports errors when using deprecated --target-extension', async t => {
     const spy = t.mock.method(global.console, 'log')
 
@@ -180,7 +170,7 @@ describe('duel', () => {
     await duel(['-p', parallel, '-k', parallel, '-l', '-d'])
 
     assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+      spy.mock.calls[3].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
     assert.ok(existsSync(resolve(paraDist, 'esm/index.js')))
     assert.ok(existsSync(resolve(paraDist, 'cjs/index.cjs')))
@@ -195,7 +185,7 @@ describe('duel', () => {
     await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '-k', project, '-d'])
 
     assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+      spy.mock.calls[3].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
     assert.ok(existsSync(resolve(proDist, 'esm/index.js')))
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
