@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -44,7 +44,7 @@
     "url": "https://github.com/knightedcodemonkey/duel/issues"
   },
   "peerDependencies": {
-    "typescript": ">=4.0.0"
+    "typescript": ">=4.0.0 || >=4.8.0-dev"
   },
   "devDependencies": {
     "@types/node": "^20.4.6",
