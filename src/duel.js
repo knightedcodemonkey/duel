@@ -48,12 +48,11 @@ const duel = async args => {
     const isCjsBuild = originalType !== 'commonjs'
     const targetExt = isCjsBuild ? '.cjs' : '.mjs'
     const hex = randomBytes(4).toString('hex')
-    const getOverrideTsConfig = dualOutDir => {
+    const getOverrideTsConfig = () => {
       return {
         ...tsconfig,
         compilerOptions: {
           ...tsconfig.compilerOptions,
-          outDir: dualOutDir,
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
         },
@@ -64,9 +63,9 @@ const duel = async args => {
         configPath,
         dirs
           ? isCjsBuild
-            ? join(projectDir, outDir, 'esm')
-            : join(projectDir, outDir, 'cjs')
-          : undefined,
+            ? join(absoluteOutDir, 'esm')
+            : join(absoluteOutDir, 'cjs')
+          : absoluteOutDir,
       )
     }
     const updateSpecifiersAndFileExtensions = async filenames => {
@@ -140,8 +139,11 @@ const duel = async args => {
       })
 
       const dualConfigPath = join(paraTempDir, 'tsconfig.json')
-      const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
-      const tsconfigDual = getOverrideTsConfig(dualOutDir)
+      const absoluteDualOutDir = join(
+        paraTempDir,
+        isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
+      )
+      const tsconfigDual = getOverrideTsConfig()
 
       await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
       await writeFile(
@@ -158,14 +160,16 @@ const duel = async args => {
       const startTime = performance.now()
 
       try {
-        await Promise.all([runPrimaryBuild(), runBuild(dualConfigPath)])
+        await Promise.all([
+          runPrimaryBuild(),
+          runBuild(dualConfigPath, absoluteDualOutDir),
+        ])
         success = true
       } catch ({ message }) {
         logError(message)
       }
 
       if (success) {
-        const absoluteDualOutDir = join(paraTempDir, dualOutDir)
         const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
           ignore: 'node_modules/**',
         })
@@ -194,8 +198,11 @@ const duel = async args => {
 
       if (success) {
         const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
-        const dualOutDir = isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm')
-        const tsconfigDual = getOverrideTsConfig(dualOutDir)
+        const absoluteDualOutDir = join(
+          projectDir,
+          isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
+        )
+        const tsconfigDual = getOverrideTsConfig()
         const pkgRename = 'package.json.bak'
 
         /**
@@ -217,7 +224,7 @@ const duel = async args => {
         // Build dual
         log('Starting dual build...')
         try {
-          await runBuild(dualConfigPath)
+          await runBuild(dualConfigPath, absoluteDualOutDir)
         } catch ({ message }) {
           success = false
           logError(message)
@@ -229,7 +236,6 @@ const duel = async args => {
         await rename(join(pkgDir, pkgRename), pkg.path)
 
         if (success) {
-          const absoluteDualOutDir = join(projectDir, dualOutDir)
           const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
             ignore: 'node_modules/**',
           })
