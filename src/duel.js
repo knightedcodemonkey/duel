@@ -133,7 +133,7 @@ const duel = async args => {
          * @see https://github.com/github/gitignore/blob/main/Node.gitignore
          */
         filter: src =>
-          !/logs|pids|lib-cov|coverage|bower_components|build|dist|jspm_packages|web_modules|out|\.next|\.tsbuildinfo|\.npm|\.node_repl_history|\.tgz|\.yarn|\.pnp|\.nyc_output|\.grunt/i.test(
+          !/logs|pids|lib-cov|coverage|bower_components|build|dist|jspm_packages|web_modules|out|\.next|\.tsbuildinfo|\.npm|\.node_repl_history|\.tgz|\.yarn|\.pnp|\.nyc_output|\.grunt|\.DS_Store/i.test(
             src,
           ),
       })
