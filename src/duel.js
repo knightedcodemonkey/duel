@@ -74,7 +74,7 @@ const duel = async args => {
         const outFilename = dts.test(filename)
           ? filename.replace(dts, isCjsBuild ? '.d.cts' : '.d.mts')
           : filename.replace(/\.js$/, targetExt)
-        const code = await specifier.update(filename, ({ value }) => {
+        const { code, error } = await specifier.update(filename, ({ value }) => {
           // Collapse any BinaryExpression or NewExpression to test for a relative specifier
           const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
           const relative = /^(?:\.|\.\.)\//
@@ -85,8 +85,10 @@ const duel = async args => {
           }
         })
 
-        await writeFile(outFilename, code)
-        await rm(filename, { force: true })
+        if (code && !error) {
+          await writeFile(outFilename, code)
+          await rm(filename, { force: true })
+        }
       }
     }
     const logSuccess = start => {
