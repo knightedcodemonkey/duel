@@ -21,7 +21,7 @@
     "prettier": "prettier -w src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/*.js",
-    "build": "babel-dual-package --no-cjs-dir src",
+    "build": "babel-dual-package --no-cjs-dir --no-comments src",
     "prepack": "npm run build"
   },
   "keywords": [
