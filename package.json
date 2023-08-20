@@ -59,7 +59,8 @@
   "dependencies": {
     "@knighted/specifier": "^1.0.0-rc.4",
     "glob": "^10.3.3",
-    "read-pkg-up": "^10.0.0"
+    "read-pkg-up": "^10.0.0",
+    "strip-json-comments": "^5.0.1"
   },
   "prettier": {
     "arrowParens": "avoid",

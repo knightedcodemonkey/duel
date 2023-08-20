@@ -2,6 +2,7 @@ import { cwd } from 'node:process'
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { stat, readFile } from 'node:fs/promises'
+import stripJsonComments from 'strip-json-comments'
 
 import { readPackageUp } from 'read-pkg-up'
 
@@ -124,7 +125,7 @@ const init = async args => {
       let tsconfig = null
 
       try {
-        tsconfig = JSON.parse((await readFile(configPath)).toString())
+        tsconfig = JSON.parse(stripJsonComments((await readFile(configPath)).toString()))
       } catch (err) {
         logError(`The config file found at ${configPath} is not parsable as JSON.`)
 
