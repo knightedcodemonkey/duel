@@ -207,7 +207,7 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(paraDist, 'cjs/index.cjs')))
   })
 
-  it('works as a cli script', async () => {
+  it('works as a cli script', () => {
     const resp = execSync('./src/duel.js -h', { cwd: resolve(__dirname, '..') })
 
     assert.ok(resp.toString().indexOf('Options:') > -1)

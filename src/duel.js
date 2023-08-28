@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { argv, cwd } from 'node:process'
+import { argv } from 'node:process'
 import { join, dirname, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, cp, rename, stat, access, constants } from 'node:fs/promises'
@@ -8,12 +8,19 @@ import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 import { glob } from 'glob'
+import { findUp, pathExists } from 'find-up'
 import { specifier } from '@knighted/specifier'
 
 import { init } from './init.js'
 import { getRealPathAsFileUrl, logError, log } from './util.js'
 
-const tsc = join(cwd(), 'node_modules', '.bin', 'tsc')
+const tsc = await findUp(async dir => {
+  const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
+
+  if (await pathExists(tscBin)) {
+    return tscBin
+  }
+})
 const runBuild = (project, outDir) => {
   return new Promise((resolve, reject) => {
     const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
