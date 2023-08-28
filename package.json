@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.0-rc.12",
+  "version": "1.0.0-rc.13",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@knighted/specifier": "^1.0.0",
+    "find-up": "^6.3.0",
     "glob": "^10.3.3",
     "read-pkg-up": "^10.0.0",
     "strip-json-comments": "^5.0.1"
