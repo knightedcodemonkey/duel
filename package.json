@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.4.6",
-    "babel-dual-package": "^1.1.1",
+    "babel-dual-package": "^1.1.2",
     "c8": "^8.0.1",
     "eslint": "^8.45.0",
     "eslint-plugin-n": "^16.0.1",
