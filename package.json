@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -25,11 +25,17 @@
     "prepack": "npm run build"
   },
   "keywords": [
-    "tsc",
+    "node",
     "typescript",
+    "esm",
+    "cjs",
+    "commonjs",
     "dual package",
+    "build",
+    "tsc",
     "cts",
-    "mts"
+    "mts",
+    "mjs"
   ],
   "files": [
     "dist"

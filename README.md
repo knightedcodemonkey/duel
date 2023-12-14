@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/knightedcodemonkey/duel/branch/main/graph/badge.svg?token=7K74BRLHFy)](https://codecov.io/gh/knightedcodemonkey/duel)
 [![NPM version](https://img.shields.io/npm/v/@knighted/duel.svg)](https://www.npmjs.com/package/@knighted/duel)
 
-Node.js tool for building a TypeScript dual package.
+Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) with TypeScript. Supports CommonJS and ES module projects.
 
 ## Features
 
@@ -37,7 +37,7 @@ Then, given a `package.json` that defines `"type": "module"` and  a `tsconfig.js
 }
 ```
 
-You can create a build for the project defined by the above configuration, **and also a separate dual CJS build** by defining the following npm run script in your `package.json`:
+You can create an ES module build for the project defined by the above configuration, **and also a dual CJS build** by defining the following npm run script in your `package.json`:
 
 ```json
 "scripts": {
