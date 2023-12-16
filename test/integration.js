@@ -70,7 +70,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.not.json'])
-    assert.ok(spy.mock.calls[0].arguments[1].endsWith('not parsable as JSON.'))
+    assert.ok(spy.mock.calls[0].arguments[1].endsWith('not parsable as JSONC.'))
   })
 
   it('reports errors when using deprecated --target-extension', async t => {
