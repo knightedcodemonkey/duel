@@ -7,7 +7,7 @@
     "declaration": true,
     "strict": false,
     "outDir": "dist",
-    "lib": ["DOM", "ES2015"]
+    "lib": ["DOM", "ES2015"], // dangle comma
   },
   "include": ["src"]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
@@ -66,8 +66,8 @@
     "@knighted/specifier": "^1.0.1",
     "find-up": "^6.3.0",
     "glob": "^10.3.3",
-    "read-pkg-up": "^10.0.0",
-    "strip-json-comments": "^5.0.1"
+    "jsonc-parser": "^3.2.0",
+    "read-pkg-up": "^10.0.0"
   },
   "prettier": {
     "arrowParens": "avoid",

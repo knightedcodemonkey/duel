@@ -2,9 +2,9 @@ import { cwd } from 'node:process'
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { stat, readFile } from 'node:fs/promises'
-import stripJsonComments from 'strip-json-comments'
 
 import { readPackageUp } from 'read-pkg-up'
+import JSONC from 'jsonc-parser'
 
 import { logError, log } from './util.js'
 
@@ -123,11 +123,16 @@ const init = async args => {
 
     if (stats.isFile()) {
       let tsconfig = null
+      const errors = []
+      const jsonText = (await readFile(configPath)).toString()
 
-      try {
-        tsconfig = JSON.parse(stripJsonComments((await readFile(configPath)).toString()))
-      } catch (err) {
-        logError(`The config file found at ${configPath} is not parsable as JSON.`)
+      tsconfig = JSONC.parse(jsonText, errors, {
+        disallowComments: false,
+        allowTrailingComma: true,
+      })
+
+      if (errors.length) {
+        logError(`The config file found at ${configPath} is not parsable as JSONC.`)
 
         return false
       }
