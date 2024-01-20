@@ -17,7 +17,7 @@
       "error",
       {
         "convertPath": {
-          "src/*.js": ["^src/(.+)$", "dist/$1"]
+          "src/*.js": ["^src/(.+)$", "dist/esm/$1"]
         }
       }
     ]
