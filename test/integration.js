@@ -2,7 +2,7 @@ import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
-import { rm, readFile } from 'node:fs/promises'
+import { rm, readFile, rename } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { spawnSync, execSync } from 'node:child_process'
 
@@ -51,12 +51,13 @@ describe('duel', () => {
 
   it('uses default --project value of "tsconfig.json"', async t => {
     const spy = t.mock.method(global.console, 'log')
-    /**
-     * Should error due to the cwd of this processs not being
-     * within test/__fixtures__/esmProject.
-     */
+    const tsConfigPath = resolve('./tsconfig.json')
+    const tsConfigPathTemp = tsConfigPath.replace('tsconfig', 'tsconfig.temp')
+
+    await rename(tsConfigPath, tsConfigPathTemp)
     await duel()
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('is not a file or directory.'))
+    await rename(tsConfigPathTemp, tsConfigPath)
   })
 
   it('reports errors when --project is a directory with no tsconfig.json', async t => {

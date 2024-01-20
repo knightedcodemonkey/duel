@@ -1,15 +1,15 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
-  "bin": "dist/duel.js",
+  "bin": "dist/esm/duel.js",
   "exports": {
     ".": {
-      "import": "./dist/duel.js",
-      "require": "./dist/duel.cjs",
-      "default": "./dist/duel.js"
+      "import": "./dist/esm/duel.js",
+      "require": "./dist/cjs/duel.cjs",
+      "default": "./dist/esm/duel.js"
     },
     "./package.json": "./package.json"
   },
@@ -21,16 +21,17 @@
     "prettier": "prettier -w src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/*.js",
-    "build": "babel-dual-package --no-cjs-dir --no-comments src",
+    "build": "node src/duel.js --dirs",
     "prepack": "npm run build"
   },
   "keywords": [
     "node",
     "typescript",
+    "dual package",
+    "es module",
+    "commonjs",
     "esm",
     "cjs",
-    "commonjs",
-    "dual package",
     "build",
     "tsc",
     "cts",
@@ -54,13 +55,12 @@
   },
   "devDependencies": {
     "@types/node": "^20.4.6",
-    "babel-dual-package": "^1.1.2",
     "c8": "^8.0.1",
     "eslint": "^8.45.0",
     "eslint-plugin-n": "^16.0.1",
-    "prettier": "^3.0.1",
+    "prettier": "^3.2.4",
     "typescript": "^5.4.0-dev.20231206",
-    "vite": "^4.4.8"
+    "vite": "^5.0.12"
   },
   "dependencies": {
     "@knighted/specifier": "^1.0.1",
