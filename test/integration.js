@@ -216,11 +216,22 @@ describe('duel', () => {
 
   it('reports compilation errors during a build', async t => {
     const spy = t.mock.method(global.console, 'log')
+    const spyExit = t.mock.method(process, 'exit')
 
     t.after(async () => {
       await rmDist(errDist)
     })
-    await duel(['-p', 'test/__fixtures__/compileErrors/tsconfig.json'])
+    spyExit.mock.mockImplementation(number => {
+      throw new Error(`Mocked process.exit: ${number}`)
+    })
+    await assert.rejects(
+      async () => {
+        await duel(['-p', 'test/__fixtures__/compileErrors/tsconfig.json'])
+      },
+      { message: /Mocked process\.exit/ },
+    )
+
+    assert.ok(spyExit.mock.calls[0].arguments > 0)
     assert.equal(spy.mock.calls[1].arguments[1], 'Compilation errors found.')
   })
 

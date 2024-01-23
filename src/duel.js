@@ -30,18 +30,25 @@ const runBuild = (project, outDir) => {
       reject(new Error(`Failed to compile: ${err.message}`))
     })
 
-    build.on('close', code => {
-      if (code === null) {
-        return reject(new Error('Failed to compile.'))
-      }
-
+    build.on('exit', code => {
       if (code > 0) {
-        return reject(new Error('Compilation errors found.'))
+        return reject(new Error(code))
       }
 
       resolve(code)
     })
   })
+}
+const handleErrorAndExit = message => {
+  const exitCode = Number(message)
+
+  if (isNaN(exitCode)) {
+    logError(message)
+    process.exit(1)
+  } else {
+    logError('Compilation errors found.')
+    process.exit(exitCode)
+  }
 }
 const duel = async args => {
   const ctx = await init(args)
@@ -175,7 +182,7 @@ const duel = async args => {
         ])
         success = true
       } catch ({ message }) {
-        logError(message)
+        handleErrorAndExit(message)
       }
 
       if (success) {
@@ -202,7 +209,7 @@ const duel = async args => {
         await runPrimaryBuild()
         success = true
       } catch ({ message }) {
-        logError(message)
+        handleErrorAndExit(message)
       }
 
       if (success) {
@@ -213,6 +220,7 @@ const duel = async args => {
         )
         const tsconfigDual = getOverrideTsConfig()
         const pkgRename = 'package.json.bak'
+        let errorMsg = ''
 
         /**
          * Create a new package.json with updated `type` field.
@@ -236,13 +244,17 @@ const duel = async args => {
           await runBuild(dualConfigPath, absoluteDualOutDir)
         } catch ({ message }) {
           success = false
-          logError(message)
-        }
+          errorMsg = message
+        } finally {
+          // Cleanup and restore
+          await rm(dualConfigPath, { force: true })
+          await rm(pkg.path, { force: true })
+          await rename(join(pkgDir, pkgRename), pkg.path)
 
-        // Cleanup and restore
-        await rm(dualConfigPath, { force: true })
-        await rm(pkg.path, { force: true })
-        await rename(join(pkgDir, pkgRename), pkg.path)
+          if (errorMsg) {
+            handleErrorAndExit(errorMsg)
+          }
+        }
 
         if (success) {
           const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {

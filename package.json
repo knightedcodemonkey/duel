@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist",
