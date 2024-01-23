@@ -13,6 +13,7 @@
   },
   "rules": {
     "no-console": "error",
+    "n/no-process-exit": "off",
     "n/shebang": [
       "error",
       {
