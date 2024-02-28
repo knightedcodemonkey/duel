@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { stat, readFile } from 'node:fs/promises'
 
-import { readPackageUp } from 'read-pkg-up'
+import { readPackageUp } from 'read-package-up'
 import JSONC from 'jsonc-parser'
 
 import { logError, log } from './util.js'
