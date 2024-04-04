@@ -60,7 +60,7 @@
     "eslint-plugin-n": "^16.0.1",
     "prettier": "^3.2.4",
     "typescript": "^5.5.0-dev.20240228",
-    "vite": "^5.0.12"
+    "vite": "^5.2.8"
   },
   "dependencies": {
     "@knighted/specifier": "^1.0.1",
