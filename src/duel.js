@@ -3,7 +3,7 @@
 import { argv } from 'node:process'
 import { join, dirname, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, cp, rename, stat, access, constants } from 'node:fs/promises'
+import { writeFile, rm, rename } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -54,7 +54,7 @@ const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, configPath, parallel, dirs, pkg } = ctx
+    const { projectDir, tsconfig, configPath, dirs, pkg } = ctx
     const pkgDir = dirname(pkg.path)
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
     const absoluteOutDir = resolve(projectDir, outDir)
@@ -113,76 +113,57 @@ const duel = async args => {
       )
     }
 
-    if (parallel) {
-      const paraName = `_${hex}_`
-      const paraParent = join(projectDir, '..')
-      const paraTempDir = join(paraParent, paraName)
-      let isDirWritable = true
+    log('Starting primary build...')
 
-      try {
-        const stats = await stat(paraParent)
+    let success = false
+    const startTime = performance.now()
 
-        if (stats.isDirectory()) {
-          await access(paraParent, constants.W_OK)
-        } else {
-          isDirWritable = false
-        }
-      } catch {
-        isDirWritable = false
-      }
+    try {
+      await runPrimaryBuild()
+      success = true
+    } catch ({ message }) {
+      handleErrorAndExit(message)
+    }
 
-      if (!isDirWritable) {
-        logError('No writable directory to prepare parallel builds. Exiting.')
-        return
-      }
-
-      log('Preparing parallel build...')
-
-      const prepStart = performance.now()
-
-      await cp(projectDir, paraTempDir, {
-        recursive: true,
-        /**
-         * Ignore common .gitignored directories in Node.js projects.
-         * Except node_modules.
-         *
-         * @see https://github.com/github/gitignore/blob/main/Node.gitignore
-         */
-        filter: src =>
-          !/logs|pids|lib-cov|coverage|bower_components|build|dist|jspm_packages|web_modules|out|\.next|\.tsbuildinfo|\.npm|\.node_repl_history|\.tgz|\.yarn|\.pnp|\.nyc_output|\.grunt|\.DS_Store/i.test(
-            src,
-          ),
-      })
-
-      const dualConfigPath = join(paraTempDir, 'tsconfig.json')
+    if (success) {
+      const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
       const absoluteDualOutDir = join(
-        paraTempDir,
+        projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
       )
       const tsconfigDual = getOverrideTsConfig()
+      const pkgRename = 'package.json.bak'
+      let errorMsg = ''
 
-      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
+      /**
+       * Create a new package.json with updated `type` field.
+       * Create a new tsconfig.json.
+       */
+      await rename(pkg.path, join(pkgDir, pkgRename))
       await writeFile(
-        join(paraTempDir, 'package.json'),
+        pkg.path,
         JSON.stringify({
           type: isCjsBuild ? 'commonjs' : 'module',
         }),
       )
+      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
 
-      log(`Prepared in ${Math.round(performance.now() - prepStart)}ms.`)
-      log('Starting parallel dual builds...')
-
-      let success = false
-      const startTime = performance.now()
-
+      // Build dual
+      log('Starting dual build...')
       try {
-        await Promise.all([
-          runPrimaryBuild(),
-          runBuild(dualConfigPath, absoluteDualOutDir),
-        ])
-        success = true
+        await runBuild(dualConfigPath, absoluteDualOutDir)
       } catch ({ message }) {
-        handleErrorAndExit(message)
+        success = false
+        errorMsg = message
+      } finally {
+        // Cleanup and restore
+        await rm(dualConfigPath, { force: true })
+        await rm(pkg.path, { force: true })
+        await rename(join(pkgDir, pkgRename), pkg.path)
+
+        if (errorMsg) {
+          handleErrorAndExit(errorMsg)
+        }
       }
 
       if (success) {
@@ -191,79 +172,7 @@ const duel = async args => {
         })
 
         await updateSpecifiersAndFileExtensions(filenames)
-        // Copy over and cleanup
-        await cp(absoluteDualOutDir, join(absoluteOutDir, isCjsBuild ? 'cjs' : 'esm'), {
-          recursive: true,
-        })
-        await rm(paraTempDir, { force: true, recursive: true })
-
         logSuccess(startTime)
-      }
-    } else {
-      log('Starting primary build...')
-
-      let success = false
-      const startTime = performance.now()
-
-      try {
-        await runPrimaryBuild()
-        success = true
-      } catch ({ message }) {
-        handleErrorAndExit(message)
-      }
-
-      if (success) {
-        const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
-        const absoluteDualOutDir = join(
-          projectDir,
-          isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
-        )
-        const tsconfigDual = getOverrideTsConfig()
-        const pkgRename = 'package.json.bak'
-        let errorMsg = ''
-
-        /**
-         * Create a new package.json with updated `type` field.
-         * Create a new tsconfig.json.
-         *
-         * The need to create a new package.json makes doing
-         * the builds in parallel difficult.
-         */
-        await rename(pkg.path, join(pkgDir, pkgRename))
-        await writeFile(
-          pkg.path,
-          JSON.stringify({
-            type: isCjsBuild ? 'commonjs' : 'module',
-          }),
-        )
-        await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
-
-        // Build dual
-        log('Starting dual build...')
-        try {
-          await runBuild(dualConfigPath, absoluteDualOutDir)
-        } catch ({ message }) {
-          success = false
-          errorMsg = message
-        } finally {
-          // Cleanup and restore
-          await rm(dualConfigPath, { force: true })
-          await rm(pkg.path, { force: true })
-          await rename(join(pkgDir, pkgRename), pkg.path)
-
-          if (errorMsg) {
-            handleErrorAndExit(errorMsg)
-          }
-        }
-
-        if (success) {
-          const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
-            ignore: 'node_modules/**',
-          })
-
-          await updateSpecifiersAndFileExtensions(filenames)
-          logSuccess(startTime)
-        }
       }
     }
   }

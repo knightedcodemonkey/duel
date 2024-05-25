@@ -12,12 +12,10 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const plain = resolve(__dirname, '__fixtures__/plain')
 const project = resolve(__dirname, '__fixtures__/project')
-const parallel = resolve(__dirname, '__fixtures__/parallel')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const plainDist = join(plain, 'dist')
 const proDist = join(project, 'dist')
-const paraDist = join(parallel, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
@@ -31,7 +29,6 @@ describe('duel', () => {
     await rmDist(esmDist)
     await rmDist(cjsDist)
     await rmDist(errDist)
-    await rmDist(paraDist)
     await rmDist(plainDist)
   })
 
@@ -191,21 +188,6 @@ describe('duel', () => {
     assert.ok(
       spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
-  })
-
-  it('supports running builds in parallel', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    t.after(async () => {
-      await rmDist(paraDist)
-    })
-    await duel(['-p', parallel, '-k', parallel, '-l', '-d'])
-
-    assert.ok(
-      spy.mock.calls[3].arguments[0].startsWith('Successfully created a dual CJS build'),
-    )
-    assert.ok(existsSync(resolve(paraDist, 'esm/index.js')))
-    assert.ok(existsSync(resolve(paraDist, 'cjs/index.cjs')))
   })
 
   it('works as a cli script', () => {
