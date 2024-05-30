@@ -35,6 +35,9 @@ const getUser = async () => {
   return user
 }
 
+__dirname
+__filename
+
 getUser()
 
 export type { User }

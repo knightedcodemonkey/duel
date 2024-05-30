@@ -3,7 +3,7 @@
   "version": "2.0.0-rc.0",
   "description": "TypeScript dual packages.",
   "type": "module",
-  "main": "dist",
+  "main": "dist/esm/duel.js",
   "bin": "dist/esm/duel.js",
   "exports": {
     ".": {
@@ -63,6 +63,7 @@
     "vite": "^5.2.8"
   },
   "dependencies": {
+    "@knighted/module": "^1.0.0-alpha.3",
     "@knighted/specifier": "^1.0.1",
     "find-up": "^6.3.0",
     "glob": "^10.3.3",

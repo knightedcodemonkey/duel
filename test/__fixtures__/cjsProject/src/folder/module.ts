@@ -16,5 +16,7 @@ const mod: Mod = {
   }
 }
 
+require.resolve('../esm.mjs')
+
 export { mod, cjs }
 export type { Mod }

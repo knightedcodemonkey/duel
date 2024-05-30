@@ -35,6 +35,11 @@ const getUser = async () => {
   return user
 }
 
+import.meta.url
+import.meta.dirname
+import.meta.filename
+import.meta.resolve
+
 getUser()
 
 export type { User }

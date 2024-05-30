@@ -1,44 +1,20 @@
 #!/usr/bin/env node
 
 import { argv } from 'node:process'
-import { join, dirname, resolve } from 'node:path'
+import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename } from 'node:fs/promises'
+import { writeFile, rm, rename, cp, mkdir } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 import { glob } from 'glob'
 import { findUp, pathExists } from 'find-up'
 import { specifier } from '@knighted/specifier'
+import { transform } from '@knighted/module'
 
 import { init } from './init.js'
-import { getRealPathAsFileUrl, logError, log } from './util.js'
+import { getRealPathAsFileUrl, getCompileFiles, logError, log } from './util.js'
 
-const tsc = await findUp(async dir => {
-  const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
-
-  if (await pathExists(tscBin)) {
-    return tscBin
-  }
-})
-const runBuild = (project, outDir) => {
-  return new Promise((resolve, reject) => {
-    const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-    const build = spawn(tsc, args, { stdio: 'inherit' })
-
-    build.on('error', err => {
-      reject(new Error(`Failed to compile: ${err.message}`))
-    })
-
-    build.on('exit', code => {
-      if (code > 0) {
-        return reject(new Error(code))
-      }
-
-      resolve(code)
-    })
-  })
-}
 const handleErrorAndExit = message => {
   const exitCode = Number(message)
 
@@ -55,6 +31,34 @@ const duel = async args => {
 
   if (ctx) {
     const { projectDir, tsconfig, configPath, dirs, pkg } = ctx
+    const tsc = await findUp(
+      async dir => {
+        const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
+
+        if (await pathExists(tscBin)) {
+          return tscBin
+        }
+      },
+      { cwd: projectDir },
+    )
+    const runBuild = (project, outDir) => {
+      return new Promise((resolve, reject) => {
+        const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
+        const build = spawn(tsc, args, { stdio: 'inherit' })
+
+        build.on('error', err => {
+          reject(new Error(`Failed to compile: ${err.message}`))
+        })
+
+        build.on('exit', code => {
+          if (code > 0) {
+            return reject(new Error(code))
+          }
+
+          resolve(code)
+        })
+      })
+    }
     const pkgDir = dirname(pkg.path)
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
     const absoluteOutDir = resolve(projectDir, outDir)
@@ -126,7 +130,9 @@ const duel = async args => {
     }
 
     if (success) {
-      const dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
+      const compileFiles = getCompileFiles(tsc, projectDir)
+      const subDir = join(projectDir, `_${hex}_`)
+      const dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
       const absoluteDualOutDir = join(
         projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
@@ -134,6 +140,12 @@ const duel = async args => {
       const tsconfigDual = getOverrideTsConfig()
       const pkgRename = 'package.json.bak'
       let errorMsg = ''
+
+      // Copy project directory as a subdirectory
+      await mkdir(subDir)
+      await Promise.all(
+        compileFiles.map(file => cp(file, resolve(subDir, relative(projectDir, file)))),
+      )
 
       /**
        * Create a new package.json with updated `type` field.
@@ -148,6 +160,18 @@ const duel = async args => {
       )
       await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
 
+      /**
+       * Transform ambiguous modules for the target dual build.
+       * @see https://github.com/microsoft/TypeScript/issues/58658
+       */
+      const toTransform = await glob(`${subDir}/**/*{.js,.jsx,.ts,.tsx}`, {
+        ignore: 'node_modules/**',
+      })
+
+      for (const file of toTransform) {
+        await transform(file, { out: file, type: isCjsBuild ? 'commonjs' : 'module' })
+      }
+
       // Build dual
       log('Starting dual build...')
       try {
@@ -159,6 +183,7 @@ const duel = async args => {
         // Cleanup and restore
         await rm(dualConfigPath, { force: true })
         await rm(pkg.path, { force: true })
+        await rm(subDir, { force: true, recursive: true })
         await rename(join(pkgDir, pkgRename), pkg.path)
 
         if (errorMsg) {
