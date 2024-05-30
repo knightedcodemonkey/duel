@@ -1,9 +1,9 @@
 {
   "name": "@knighted/duel",
-  "version": "1.0.8",
+  "version": "2.0.0-rc.0",
   "description": "TypeScript dual packages.",
   "type": "module",
-  "main": "dist",
+  "main": "dist/esm/duel.js",
   "bin": "dist/esm/duel.js",
   "exports": {
     ".": {
@@ -14,7 +14,7 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": ">=16.19.0"
+    "node": ">=20.11.0"
   },
   "engineStrict": true,
   "scripts": {
@@ -54,16 +54,17 @@
     "typescript": ">=4.0.0 || >=4.9.0-dev || >=5.3.0-dev || >=5.4.0-dev || >=5.5.0-dev || next"
   },
   "devDependencies": {
-    "@types/node": "^20.4.6",
+    "@types/node": "^20.11.0",
     "c8": "^8.0.1",
     "eslint": "^8.45.0",
     "eslint-plugin-n": "^16.0.1",
     "prettier": "^3.2.4",
-    "typescript": "^5.5.0-dev.20240228",
+    "typescript": "^5.5.0-dev.20240525",
     "vite": "^5.2.8"
   },
   "dependencies": {
-    "@knighted/specifier": "^1.0.1",
+    "@knighted/module": "^1.0.0-alpha.3",
+    "@knighted/specifier": "^2.0.0-rc.1",
     "find-up": "^6.3.0",
     "glob": "^10.3.3",
     "jsonc-parser": "^3.2.0",

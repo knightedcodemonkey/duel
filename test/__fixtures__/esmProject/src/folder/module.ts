@@ -16,5 +16,7 @@ const mod: Mod = {
   }
 }
 
+import.meta.url
+
 export { mod, cjs }
 export type { Mod }
