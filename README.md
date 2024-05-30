@@ -10,6 +10,7 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 
 - Bidirectional ESM ↔️ CJS dual builds inferred from the package.json `type`.
 - Correctly preserves module systems for `.mts` and `.cts` file extensions.
+- Resolves the [differences between ES modules and CommonJS](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs).
 - Use only one package.json and tsconfig.json.
 
 ## Requirements
@@ -83,8 +84,8 @@ Usage: duel [options]
 Options:
 --project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
 --pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to cwd.
---dirs, -d 		         Output both builds to directories inside of outDir. [esm, cjs].
---help, -h 		         Print this message.
+--dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
+--help, -h 		 Print this message.
 ```
 
 ## Gotchas
