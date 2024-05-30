@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@knighted/module": "^1.0.0-alpha.3",
-    "@knighted/specifier": "^1.0.1",
+    "@knighted/specifier": "^2.0.0-rc.1",
     "find-up": "^6.3.0",
     "glob": "^10.3.3",
     "jsonc-parser": "^3.2.0",
