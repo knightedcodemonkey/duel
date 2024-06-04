@@ -2,18 +2,18 @@
   "name": "one",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/one-file.js",
+  "main": "dist/main.js",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/one-file.d.ts",
-        "default": "./dist/one-file.js"
+        "types": "./dist/main.d.ts",
+        "default": "./dist/main.js"
       },
       "require": {
-        "types": "./dist/cjs/one-file.d.cts",
-        "default": "./dist/cjs/one-file.cjs"
+        "types": "./dist/cjs/main.d.cts",
+        "default": "./dist/cjs/main.cjs"
       },
-      "default": "./dist/one-file.js"
+      "default": "./dist/main.js"
     },
     "./package.json": "./package.json"
   },

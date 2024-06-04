@@ -2,18 +2,40 @@
   "name": "two",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/two-file.js",
+  "main": "dist/index.js",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/two-file.d.ts",
-        "default": "./dist/two-file.js"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/cjs/two-file.d.cts",
-        "default": "./dist/cjs/two-file.cjs"
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
       },
-      "default": "./dist/two-file.js"
+      "default": "./dist/index.js"
+    },
+    "./file": {
+      "import": {
+        "types": "./dist/file.d.ts",
+        "default": "./dist/file.js"
+      },
+      "require": {
+        "types": "./dist/cjs/file.d.cts",
+        "default": "./dist/cjs/file.cjs"
+      },
+      "default": "./dist/file.js"
+    },
+    "./other": {
+      "import": {
+        "types": "./dist/other.d.ts",
+        "default": "./dist/other.js"
+      },
+      "require": {
+        "types": "./dist/cjs/other.d.cts",
+        "default": "./dist/cjs/other.cjs"
+      },
+      "default": "./dist/other.js"
     },
     "./package.json": "./package.json"
   }
