@@ -1,0 +1,12 @@
+{
+  "name": "mononpm",
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "one",
+    "two"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

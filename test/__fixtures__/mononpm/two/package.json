@@ -1,0 +1,20 @@
+{
+  "name": "two",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/two-file.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/two-file.d.ts",
+        "default": "./dist/two-file.js"
+      },
+      "require": {
+        "types": "./dist/cjs/two-file.d.cts",
+        "default": "./dist/cjs/two-file.cjs"
+      },
+      "default": "./dist/two-file.js"
+    },
+    "./package.json": "./package.json"
+  }
+}

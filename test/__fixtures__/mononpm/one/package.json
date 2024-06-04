@@ -1,0 +1,23 @@
+{
+  "name": "one",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/one-file.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/one-file.d.ts",
+        "default": "./dist/one-file.js"
+      },
+      "require": {
+        "types": "./dist/cjs/one-file.d.cts",
+        "default": "./dist/cjs/one-file.cjs"
+      },
+      "default": "./dist/one-file.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "two": "^1.0.0"
+  }
+}
