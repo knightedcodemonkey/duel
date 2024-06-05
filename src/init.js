@@ -30,6 +30,11 @@ const init = async args => {
           short: 'k',
           default: cwd(),
         },
+        modules: {
+          type: 'boolean',
+          short: 'm',
+          default: false,
+        },
         dirs: {
           type: 'boolean',
           short: 'd',
@@ -59,10 +64,19 @@ const init = async args => {
     log(
       '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to cwd.',
     )
+    log(
+      '--modules, -m \t\t Transform module globals for dual build target. Defaults to false.',
+    )
     log('--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].')
     log('--help, -h \t\t Print this message.')
   } else {
-    const { project, 'target-extension': targetExt, 'pkg-dir': pkgDir, dirs } = parsed
+    const {
+      project,
+      'target-extension': targetExt,
+      'pkg-dir': pkgDir,
+      modules,
+      dirs,
+    } = parsed
     let configPath = resolve(project)
     let stats = null
     let pkg = null
@@ -134,6 +148,7 @@ const init = async args => {
       return {
         pkg,
         dirs,
+        modules,
         tsconfig,
         projectDir,
         configPath,

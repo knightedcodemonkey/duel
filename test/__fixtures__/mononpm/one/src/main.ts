@@ -5,7 +5,7 @@ import { oneOther } from './other.js'
 
 const main = () => {
   talk(`Welcome ${oneOther}`)
-  say('Hello from one')
+  say(`Hello from ${import.meta.url}`)
 }
 
 main()
