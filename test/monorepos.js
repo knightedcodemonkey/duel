@@ -26,6 +26,8 @@ describe('duel monorepos', () => {
       await rmDist(join(npmTwo, 'dist'))
     })
 
+    spawnSync('npm', ['install'], { cwd: npm })
+
     // Build the packages (dependency first)
     await duel(['-p', npmTwo, '-k', npmTwo, '-m'])
     await duel(['-p', npmOne, '-k', npmOne, '-m'])
