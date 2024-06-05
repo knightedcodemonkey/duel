@@ -1,0 +1,23 @@
+{
+  "name": "one",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/main.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/main.d.ts",
+        "default": "./dist/main.js"
+      },
+      "require": {
+        "types": "./dist/cjs/main.d.cts",
+        "default": "./dist/cjs/main.cjs"
+      },
+      "default": "./dist/main.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "two": "^1.0.0"
+  }
+}

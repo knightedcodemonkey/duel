@@ -80,13 +80,19 @@ describe('duel', () => {
     )
   })
 
-  it('creates a dual CJS build', async t => {
+  it('creates a dual CJS build while transforming module globals', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
       await rmDist(esmDist)
     })
-    await duel(['--project', 'test/__fixtures__/esmProject', '--pkg-dir', esmProject])
+    await duel([
+      '--project',
+      'test/__fixtures__/esmProject',
+      '--pkg-dir',
+      esmProject,
+      '-m',
+    ])
 
     // Third call because of logging for starting each build.
     assert.ok(
@@ -124,13 +130,19 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
   })
 
-  it('creates a dual ESM build', async t => {
+  it('creates a dual ESM build while transforming module globals', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
       await rmDist(cjsDist)
     })
-    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-k', cjsProject])
+    await duel([
+      '-p',
+      'test/__fixtures__/cjsProject/tsconfig.json',
+      '-k',
+      cjsProject,
+      '-m',
+    ])
 
     assert.ok(
       spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual ESM build'),

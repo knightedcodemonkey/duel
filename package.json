@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "2.0.0-rc.0",
+  "version": "2.0.0-rc.1",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -20,6 +20,8 @@
   "scripts": {
     "prettier": "prettier -w src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
+    "test:integration": "node --test --test-reporter=spec test/integration.js",
+    "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/*.js",
     "build": "node src/duel.js --dirs",
     "prepack": "npm run build"
@@ -59,11 +61,12 @@
     "eslint": "^8.45.0",
     "eslint-plugin-n": "^16.0.1",
     "prettier": "^3.2.4",
+    "tsx": "^4.11.2",
     "typescript": "^5.5.0-dev.20240525",
     "vite": "^5.2.8"
   },
   "dependencies": {
-    "@knighted/module": "^1.0.0-alpha.3",
+    "@knighted/module": "^1.0.0-alpha.4",
     "@knighted/specifier": "^2.0.0-rc.1",
     "find-up": "^6.3.0",
     "glob": "^10.3.3",

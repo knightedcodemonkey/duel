@@ -30,7 +30,7 @@ const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, configPath, dirs, pkg } = ctx
+    const { projectDir, tsconfig, configPath, modules, dirs, pkg } = ctx
     const tsc = await findUp(
       async dir => {
         const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
@@ -130,22 +130,47 @@ const duel = async args => {
     }
 
     if (success) {
-      const compileFiles = getCompileFiles(tsc, projectDir)
       const subDir = join(projectDir, `_${hex}_`)
-      const dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
       const absoluteDualOutDir = join(
         projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
       )
       const tsconfigDual = getOverrideTsConfig()
       const pkgRename = 'package.json.bak'
+      let dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
       let errorMsg = ''
 
-      // Copy project directory as a subdirectory
-      await mkdir(subDir)
-      await Promise.all(
-        compileFiles.map(file => cp(file, resolve(subDir, relative(projectDir, file)))),
-      )
+      if (modules) {
+        const compileFiles = getCompileFiles(tsc, projectDir)
+
+        dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
+        await mkdir(subDir)
+        await Promise.all(
+          compileFiles.map(file =>
+            cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
+          ),
+        )
+
+        /**
+         * Transform ambiguous modules for the target dual build.
+         * @see https://github.com/microsoft/TypeScript/issues/58658
+         */
+        const toTransform = await glob(`${subDir}/**/*{.js,.jsx,.ts,.tsx}`, {
+          ignore: 'node_modules/**',
+        })
+
+        for (const file of toTransform) {
+          /**
+           * Maybe include the option to transform modules implicitly
+           * (modules: true) so that `exports` are correctly converted
+           * when targeting a CJS dual build. Depends on @knighted/module
+           * supporting he `modules` option.
+           *
+           * @see https://github.com/microsoft/TypeScript/issues/58658
+           */
+          await transform(file, { out: file, type: isCjsBuild ? 'commonjs' : 'module' })
+        }
+      }
 
       /**
        * Create a new package.json with updated `type` field.
@@ -159,18 +184,6 @@ const duel = async args => {
         }),
       )
       await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
-
-      /**
-       * Transform ambiguous modules for the target dual build.
-       * @see https://github.com/microsoft/TypeScript/issues/58658
-       */
-      const toTransform = await glob(`${subDir}/**/*{.js,.jsx,.ts,.tsx}`, {
-        ignore: 'node_modules/**',
-      })
-
-      for (const file of toTransform) {
-        await transform(file, { out: file, type: isCjsBuild ? 'commonjs' : 'module' })
-      }
 
       // Build dual
       log('Starting dual build...')
