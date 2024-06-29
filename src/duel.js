@@ -3,6 +3,7 @@
 import { argv } from 'node:process'
 import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
 import { writeFile, rm, rename, cp, mkdir } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
