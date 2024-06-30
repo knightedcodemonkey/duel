@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import { join, dirname, resolve, relative } from 'node:path'
+import { join, dirname, resolve, relative, parse } from 'node:path'
 import { spawn } from 'node:child_process'
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
-import { writeFile, rm, rename, cp, mkdir } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, copyFile, lstat } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -147,8 +146,22 @@ const duel = async args => {
         dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
         await mkdir(subDir)
         await Promise.all(
-          compileFiles.map(file =>
-            cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, '')), { recursive: true }),
+          compileFiles.map(async file =>
+            {
+              const dest = join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))
+              const { dir } = parse(dest)
+
+              try {
+                await lstat(dir)
+              } catch (err) {
+                if (err.code === 'ENOENT') {
+                  await mkdir(dir, { recursive: true })
+                }
+              }
+
+              return copyFile(file, dest)
+            }
+            //cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
           ),
         )
 
