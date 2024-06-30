@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { argv } from 'node:process'
+import { argv, platform } from 'node:process'
 import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
@@ -45,7 +45,7 @@ const duel = async args => {
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tsc, args, { stdio: 'inherit', shell: true })
+        const build = spawn(tsc, args, { stdio: 'inherit', shell: platform === 'win32' })
 
         build.on('error', err => {
           reject(new Error(`Failed to compile: ${err.message}`))
