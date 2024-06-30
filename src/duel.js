@@ -45,7 +45,7 @@ const duel = async args => {
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tsc, args, { stdio: 'inherit' })
+        const build = spawn(tsc, args, { stdio: 'inherit', shell: true })
 
         build.on('error', err => {
           reject(new Error(`Failed to compile: ${err.message}`))
