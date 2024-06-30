@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - bananas
+      - bananas-eol
   pull_request:
     branches:
       - main
