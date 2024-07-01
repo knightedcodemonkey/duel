@@ -3,7 +3,7 @@
 import { argv, platform } from 'node:process'
 import { join, dirname, resolve, relative, parse } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, mkdir, copyFile } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, copyFile, lstat } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -130,7 +130,7 @@ const duel = async args => {
     }
 
     if (success) {
-      const subDir = join(projectDir, `_${hex}_`)
+      const subDir = join(projectDir, `_${hex.replace(/\d/g, 'A')}_`)
       const absoluteDualOutDir = join(
         projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
@@ -151,8 +151,6 @@ const duel = async args => {
               const dest = join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))
               const { dir } = parse(dest)
 
-              await mkdir(dir, { recursive: true })
-              /*
               try {
                 await lstat(dir)
               } catch (err) {
@@ -160,7 +158,6 @@ const duel = async args => {
                   await mkdir(dir, { recursive: true })
                 }
               }
-                */
 
               return copyFile(file, dest)
             }
