@@ -147,24 +147,7 @@ const duel = async args => {
         await mkdir(subDir)
         await Promise.all(
           compileFiles.map(
-            async file => {
-              const dest = join(
-                subDir,
-                relative(projectDir, file).replace(/^(\.\.\/)*/, ''),
-              )
-              const { dir } = parse(dest)
-
-              try {
-                await lstat(dir)
-              } catch (err) {
-                if (err.code === 'ENOENT') {
-                  await mkdir(dir, { recursive: true })
-                }
-              }
-
-              return copyFile(file, dest)
-            },
-            //cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
+            cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
           ),
         )
 
