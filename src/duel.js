@@ -130,7 +130,7 @@ const duel = async args => {
     }
 
     if (success) {
-      const subDir = join(projectDir, `_${hex.replace(/\d/g, 'A')}_`)
+      const subDir = join(projectDir, `_${hex}_`)
       const absoluteDualOutDir = join(
         projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),

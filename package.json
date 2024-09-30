@@ -53,7 +53,7 @@
     "url": "https://github.com/knightedcodemonkey/duel/issues"
   },
   "peerDependencies": {
-    "typescript": ">=5.3.0-dev || >=5.4.0-dev || >=5.5.0-dev || next"
+    "typescript": ">=5.5.0-dev || >=5.6.0-dev || >=5.7.0-dev || next"
   },
   "devDependencies": {
     "@eslint/js": "^9.6.0",
@@ -63,9 +63,9 @@
     "eslint-plugin-n": "^17.9.0",
     "globals": "^15.6.0",
     "prettier": "^3.2.4",
-    "tsx": "^4.16.0",
-    "typescript": "^5.6.0-dev.20240629",
-    "vite": "^5.2.8"
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
   },
   "dependencies": {
     "@knighted/module": "^1.0.0-alpha.4",
