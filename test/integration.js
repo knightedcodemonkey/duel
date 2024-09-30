@@ -204,7 +204,7 @@ describe('duel', () => {
     )
   })
 
-  it('works as a cli script', () => {
+  it('works as a cli script', { skip: shell }, () => {
     const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,
     })
