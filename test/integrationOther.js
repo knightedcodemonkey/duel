@@ -46,7 +46,7 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
 
-  it.skip('supports import attributes and ts import assertion resolution mode', async t => {
+  it('supports import attributes and ts import assertion resolution mode', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
