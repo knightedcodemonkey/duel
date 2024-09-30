@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import { join, dirname, resolve, relative, parse } from 'node:path'
+import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, mkdir, copyFile, lstat } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, cp } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -146,7 +146,7 @@ const duel = async args => {
         dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
         await mkdir(subDir)
         await Promise.all(
-          compileFiles.map(
+          compileFiles.map(file =>
             cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
           ),
         )

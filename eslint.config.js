@@ -27,6 +27,15 @@ export default [
           },
         },
       ],
+      'n/no-unsupported-features/node-builtins': [
+        'error',
+        {
+          ignores: [
+            // No longer experimental with v22.3.0
+            'fs/promises.cp',
+          ],
+        },
+      ],
     },
   },
 ]
