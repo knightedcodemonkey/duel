@@ -35,8 +35,6 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Test
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm test
       - name: Report Coverage
         uses: codecov/codecov-action@v4.5.0

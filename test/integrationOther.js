@@ -89,7 +89,7 @@ describe('duel', () => {
     assert.equal(spy.mock.calls[1].arguments[1], 'Compilation errors found.')
   })
 
-  it.skip('reports an error when no package.json file found', async t => {
+  it('reports an error when no package.json file found', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
