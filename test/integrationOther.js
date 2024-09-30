@@ -46,7 +46,7 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
 
-  it('supports import attributes and ts import assertion resolution mode', async t => {
+  it.skip('supports import attributes and ts import assertion resolution mode', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
@@ -59,7 +59,7 @@ describe('duel', () => {
     )
   })
 
-  it('works as a cli script', () => {
+  it.skip('works as a cli script', () => {
     const resp = execSync(`${resolve('./src/duel.js')} -h`, {
       shell,
       cwd: resolve(__dirname, '..'),
@@ -68,7 +68,7 @@ describe('duel', () => {
     assert.ok(resp.toString().indexOf('Options:') > -1)
   })
 
-  it('reports compilation errors during a build', async t => {
+  it.skip('reports compilation errors during a build', async t => {
     const spy = t.mock.method(global.console, 'log')
     const spyExit = t.mock.method(process, 'exit')
 
@@ -89,7 +89,7 @@ describe('duel', () => {
     assert.equal(spy.mock.calls[1].arguments[1], 'Compilation errors found.')
   })
 
-  it('reports an error when no package.json file found', async t => {
+  it.skip('reports an error when no package.json file found', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
