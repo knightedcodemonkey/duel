@@ -205,10 +205,8 @@ describe('duel', () => {
   })
 
   it('works as a cli script', () => {
-    const root = resolve(__dirname, '..')
-    const resp = execSync(`${resolve(root, 'src', 'duel.js')} -h`, {
+    const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,
-      cwd: root,
     })
 
     assert.ok(resp.toString().indexOf('Options:') > -1)
