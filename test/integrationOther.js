@@ -68,7 +68,7 @@ describe('duel', () => {
     assert.ok(resp.toString().indexOf('Options:') > -1)
   })
 
-  it.skip('reports compilation errors during a build', async t => {
+  it('reports compilation errors during a build', async t => {
     const spy = t.mock.method(global.console, 'log')
     const spyExit = t.mock.method(process, 'exit')
 
