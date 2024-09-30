@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url'
 import { realpath } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { cwd, platform } from 'node:process'
+import { EOL } from 'node:os'
 
 const log = (color = '\x1b[30m', msg = '') => {
   // eslint-disable-next-line no-console
@@ -23,7 +24,7 @@ const getCompileFiles = (tscBinPath, wd = cwd()) => {
   // Exclude node_modules and empty strings.
   return stdout
     .toString()
-    .split('\n')
+    .split(EOL)
     .filter(path => !/node_modules|^$/.test(path))
 }
 

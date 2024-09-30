@@ -23,6 +23,7 @@ const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
 }
+const shell = platform === 'win32'
 
 describe('duel', () => {
   before(async () => {
@@ -120,13 +121,13 @@ describe('duel', () => {
     const { status: statusEsm } = spawnSync(
       'node',
       ['test/__fixtures__/esmProject/dist/index.js'],
-      { stdio: 'inherit', shell: platform === 'win32' },
+      { shell, stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
     const { status: statusCjs } = spawnSync(
       'node',
       ['test/__fixtures__/esmProject/dist/cjs/index.cjs'],
-      { stdio: 'inherit' },
+      { shell, stdio: 'inherit' },
     )
     assert.equal(statusCjs, 0)
   })
