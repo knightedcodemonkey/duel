@@ -5,6 +5,7 @@ import { dirname, resolve, join } from 'node:path'
 import { rm, readFile, rename } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { spawnSync, execSync } from 'node:child_process'
+import { platform } from 'node:process'
 
 import { duel } from '../src/duel.js'
 
@@ -119,7 +120,7 @@ describe('duel', () => {
     const { status: statusEsm } = spawnSync(
       'node',
       ['test/__fixtures__/esmProject/dist/index.js'],
-      { stdio: 'inherit' },
+      { stdio: 'inherit', shell: platform === 'win32' },
     )
     assert.equal(statusEsm, 0)
     const { status: statusCjs } = spawnSync(

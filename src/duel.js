@@ -146,9 +146,12 @@ const duel = async args => {
         dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
         await mkdir(subDir)
         await Promise.all(
-          compileFiles.map(async file =>
-            {
-              const dest = join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))
+          compileFiles.map(
+            async file => {
+              const dest = join(
+                subDir,
+                relative(projectDir, file).replace(/^(\.\.\/)*/, ''),
+              )
               const { dir } = parse(dest)
 
               try {
@@ -160,7 +163,7 @@ const duel = async args => {
               }
 
               return copyFile(file, dest)
-            }
+            },
             //cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
           ),
         )
