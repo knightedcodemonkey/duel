@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { argv } from 'node:process'
+import { argv, platform } from 'node:process'
 import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, cp, mkdir } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, cp } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -44,7 +44,7 @@ const duel = async args => {
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tsc, args, { stdio: 'inherit' })
+        const build = spawn(tsc, args, { stdio: 'inherit', shell: platform === 'win32' })
 
         build.on('error', err => {
           reject(new Error(`Failed to compile: ${err.message}`))
