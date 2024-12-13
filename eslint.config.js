@@ -33,6 +33,8 @@ export default [
           ignores: [
             // No longer experimental with v22.3.0
             'fs/promises.cp',
+            // No longer experimental with v22.0.0
+            'test.describe',
           ],
         },
       ],

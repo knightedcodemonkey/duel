@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "2.0.0-rc.2",
+  "version": "2.0.0",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -58,14 +58,14 @@
   "devDependencies": {
     "@eslint/js": "^9.6.0",
     "@types/node": "^22.7.4",
-    "c8": "^10.1.2",
-    "eslint": "^9.5.0",
-    "eslint-plugin-n": "^17.9.0",
+    "c8": "^10.1.3",
+    "eslint": "^9.16.0",
+    "eslint-plugin-n": "^17.15.0",
     "globals": "^15.6.0",
-    "prettier": "^3.2.4",
+    "prettier": "^3.4.2",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.2",
-    "vite": "^5.4.8"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
   },
   "dependencies": {
     "@knighted/module": "^1.0.0-alpha.4",

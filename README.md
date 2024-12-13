@@ -24,7 +24,7 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 First, install this package to create the `duel` executable inside your `node_modules/.bin` directory.
 
 ```console
-user@comp ~ $ npm i @knighted/duel --save-dev
+npm i @knighted/duel --save-dev
 ```
 
 Then, given a `package.json` that defines `"type": "module"` and a `tsconfig.json` file that looks something like the following:
@@ -51,7 +51,7 @@ You can create an ES module build for the project defined by the above configura
 And then running it:
 
 ```console
-user@comp ~ $ npm run build
+npm run build
 ```
 
 If everything worked, you should have an ESM build inside of `dist` and a CJS build inside of `dist/cjs`. Now you can update your [`exports`](https://nodejs.org/api/packages.html#exports) to match the build output.
