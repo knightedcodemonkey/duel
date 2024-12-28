@@ -114,8 +114,6 @@ These are definitely edge cases, and would only really come up if your project m
 
 - Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well. One instance of unexpected behavior is when the compiler throws errors for ES module globals when running a dual CJS build, but not for the inverse case, despite both causing runtime errors in Node.js. See the [open issue](https://github.com/microsoft/TypeScript/issues/58658). You can circumvent this with `duel` by using the `--modules` option if your project uses module globals such as `import.meta` properties or `__dirname`, `__filename`, etc. in a CommonJS project.
 
-- If doing an `import type` across module systems, i.e. from `.mts` into `.cts`, or vice versa, you might encounter the compilation error ``error TS1452: 'resolution-mode' assertions are only supported when `moduleResolution` is `node16` or `nodenext`.``. This is a [known issue](https://github.com/microsoft/TypeScript/issues/49055) and TypeScript currently suggests installing the nightly build, i.e. `npm i typescript@next`.
-
 - If running `duel` with your project's package.json file open in your editor, you may temporarily see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
 
 ## Notes
