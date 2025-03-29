@@ -1,0 +1,8 @@
+{
+  // This is passed to duel --project
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "nodenext"
+  },
+  "include": ["src"]
+}

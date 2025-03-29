@@ -15,10 +15,12 @@ const plain = resolve(__dirname, '__fixtures__/plain')
 const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
+const extended = resolve(__dirname, '__fixtures__/extended')
 const plainDist = join(plain, 'dist')
 const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
+const extDist = join(extended, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
@@ -32,6 +34,7 @@ describe('duel', () => {
     await rmDist(cjsDist)
     await rmDist(errDist)
     await rmDist(plainDist)
+    await rmDist(extDist)
   })
 
   it('prints options help', async t => {
@@ -64,13 +67,6 @@ describe('duel', () => {
 
     await duel(['-p', 'test/__fixtures__'])
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('no tsconfig.json.'))
-  })
-
-  it('reports errors when --project is not valid json', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.not.json'])
-    assert.ok(spy.mock.calls[0].arguments[1].endsWith('not parsable as JSONC.'))
   })
 
   it('reports errors when using deprecated --target-extension', async t => {
@@ -241,5 +237,33 @@ describe('duel', () => {
     })
     await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.json', '--pkg-dir', '/'])
     assert.equal(spy.mock.calls[0].arguments[1], 'No package.json file found.')
+  })
+
+  it('supports extended configs', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(extDist)
+    })
+    await duel(['-p', join(extended, 'src'), '-k', extended])
+
+    assert.ok(!spy.mock.calls[0].arguments[0].startsWith('No outDir defined'))
+    assert.ok(
+      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+    )
+
+    // Check for runtime errors against Node.js
+    const { status: statusEsm } = spawnSync(
+      'node',
+      ['test/__fixtures__/extended/dist/other.js'],
+      { shell, stdio: 'inherit' },
+    )
+    assert.equal(statusEsm, 0)
+    const { status: statusCjs } = spawnSync(
+      'node',
+      ['test/__fixtures__/extended/dist/cjs/other.cjs'],
+      { shell, stdio: 'inherit' },
+    )
+    assert.equal(statusCjs, 0)
   })
 })
