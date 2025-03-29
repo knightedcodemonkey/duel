@@ -1,10 +1,10 @@
 import { cwd } from 'node:process'
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
-import { stat, readFile } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 
+import { parseTsconfig } from 'get-tsconfig'
 import { readPackageUp } from 'read-package-up'
-import JSONC from 'jsonc-parser'
 
 import { logError, log } from './util.js'
 
@@ -124,26 +124,12 @@ const init = async args => {
     }
 
     if (stats.isFile()) {
-      let tsconfig = null
-      const errors = []
-      const jsonText = (await readFile(configPath)).toString()
-
-      tsconfig = JSONC.parse(jsonText, errors, {
-        disallowComments: false,
-        allowTrailingComma: true,
-      })
-
-      if (errors.length) {
-        logError(`The config file found at ${configPath} is not parsable as JSONC.`)
-
-        return false
-      }
+      const tsconfig = parseTsconfig(configPath)
+      const projectDir = dirname(configPath)
 
       if (!tsconfig.compilerOptions?.outDir) {
         log('No outDir defined in tsconfig.json. Build output will be in "dist".')
       }
-
-      const projectDir = dirname(configPath)
 
       return {
         pkg,
