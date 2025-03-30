@@ -1,4 +1,3 @@
-import { cwd } from 'node:process'
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { stat } from 'node:fs/promises'
@@ -28,7 +27,6 @@ const init = async args => {
         'pkg-dir': {
           type: 'string',
           short: 'k',
-          default: cwd(),
         },
         modules: {
           type: 'boolean',
@@ -62,7 +60,7 @@ const init = async args => {
       "--project, -p [path] \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
     )
     log(
-      '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to cwd.',
+      '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to --project directory.',
     )
     log(
       '--modules, -m \t\t Transform module globals for dual build target. Defaults to false.',
@@ -89,20 +87,20 @@ const init = async args => {
       return false
     }
 
-    pkg = await readPackageUp({ cwd: pkgDir })
-
-    if (!pkg) {
-      logError('No package.json file found.')
-
-      return false
-    }
-
     try {
       stats = await stat(configPath)
     } catch {
       logError(
         `Provided --project '${project}' resolves to ${configPath} which is not a file or directory.`,
       )
+
+      return false
+    }
+
+    pkg = await readPackageUp({ cwd: pkgDir ?? configPath })
+
+    if (!pkg) {
+      logError('No package.json file found.')
 
       return false
     }

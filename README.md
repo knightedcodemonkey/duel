@@ -89,7 +89,7 @@ This feature is still a work in progress regarding transforming `exports` when t
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
 
 - `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
-- `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to the cwd.
+- `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.
 - `--modules, -m` Transform module globals for dual build target. Defaults to false.
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 
