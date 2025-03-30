@@ -204,10 +204,13 @@ const duel = async args => {
     }
   }
 }
-const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1])
 
-if (import.meta.url === realFileUrlArgv1) {
-  await duel()
-}
+;(async () => {
+  const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1] ?? '')
+
+  if (import.meta.url === realFileUrlArgv1) {
+    await duel()
+  }
+})()
 
 export { duel }

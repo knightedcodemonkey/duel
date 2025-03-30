@@ -23,7 +23,7 @@
     "test:integration": "node --test --test-reporter=spec test/integration.js",
     "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/integration.js test/monorepos.js",
-    "build": "node src/duel.js --dirs",
+    "build": "node src/duel.js --dirs --modules",
     "prepack": "npm run build"
   },
   "keywords": [
