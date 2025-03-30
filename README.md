@@ -100,7 +100,7 @@ Usage: duel [options]
 
 Options:
 --project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
---pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to cwd.
+--pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to --project directory.
 --modules, -m 		 Transform module globals for dual build target. Defaults to false.
 --dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
 --help, -h 		 Print this message.
