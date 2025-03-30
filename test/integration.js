@@ -84,13 +84,7 @@ describe('duel', () => {
     t.after(async () => {
       await rmDist(esmDist)
     })
-    await duel([
-      '--project',
-      'test/__fixtures__/esmProject',
-      '--pkg-dir',
-      esmProject,
-      '-m',
-    ])
+    await duel(['--project', 'test/__fixtures__/esmProject', '-m'])
 
     // Third call because of logging for starting each build.
     assert.ok(
@@ -134,13 +128,7 @@ describe('duel', () => {
     t.after(async () => {
       await rmDist(cjsDist)
     })
-    await duel([
-      '-p',
-      'test/__fixtures__/cjsProject/tsconfig.json',
-      '-k',
-      cjsProject,
-      '-m',
-    ])
+    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-m'])
 
     assert.ok(
       spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual ESM build'),
@@ -178,8 +166,10 @@ describe('duel', () => {
     t.after(async () => {
       await rmDist(proDist)
     })
-    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '-k', project, '-d'])
+    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '-d'])
 
+    // tsconfig.json omits outDir, so it should be set to the default value of "dist"
+    assert.ok(spy.mock.calls[0].arguments[0].startsWith('No outDir defined'))
     assert.ok(
       spy.mock.calls[3].arguments[0].startsWith('Successfully created a dual CJS build'),
     )
@@ -245,7 +235,7 @@ describe('duel', () => {
     t.after(async () => {
       await rmDist(extDist)
     })
-    await duel(['-p', join(extended, 'src'), '-k', extended])
+    await duel(['-p', join(extended, 'src')])
 
     assert.ok(!spy.mock.calls[0].arguments[0].startsWith('No outDir defined'))
     assert.ok(

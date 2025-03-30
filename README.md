@@ -89,7 +89,7 @@ This feature is still a work in progress regarding transforming `exports` when t
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
 
 - `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
-- `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to the cwd.
+- `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.
 - `--modules, -m` Transform module globals for dual build target. Defaults to false.
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 
@@ -100,7 +100,7 @@ Usage: duel [options]
 
 Options:
 --project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
---pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to cwd.
+--pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to --project directory.
 --modules, -m 		 Transform module globals for dual build target. Defaults to false.
 --dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
 --help, -h 		 Print this message.
@@ -112,12 +112,12 @@ These are definitely edge cases, and would only really come up if your project m
 
 - This is going to work best if your CJS-first project uses file extensions in _relative_ specifiers. This is completely acceptable in CJS projects, and [required in ESM projects](https://nodejs.org/api/esm.html#import-specifiers). This package makes no attempt to rewrite bare specifiers, or remap any relative specifiers to a directory index.
 
-- Unfortunately, TypeScript doesn't really build [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) very well. One instance of unexpected behavior is when the compiler throws errors for ES module globals when running a dual CJS build, but not for the inverse case, despite both causing runtime errors in Node.js. See the [open issue](https://github.com/microsoft/TypeScript/issues/58658). You can circumvent this with `duel` by using the `--modules` option if your project uses module globals such as `import.meta` properties or `__dirname`, `__filename`, etc. in a CommonJS project.
+- Unfortunately, `tsc` doesn't support [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) completely. One instance of unexpected behavior is when the compiler throws errors for ES module globals when running a dual CJS build, but not for the inverse case, despite both causing runtime errors in Node.js. See the [open issue](https://github.com/microsoft/TypeScript/issues/58658). You can circumvent this with `duel` by using the `--modules` option if your project uses module globals such as `import.meta` properties or `__dirname`, `__filename`, etc. in a CommonJS project.
 
 - If running `duel` with your project's package.json file open in your editor, you may temporarily see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
 
 ## Notes
 
-As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using `tsc` without requiring multiple `tsconfig.json` files or extra configuration. The Microsoft backed TypeScript team [keep](https://github.com/microsoft/TypeScript/pull/54546) [talking](https://github.com/microsoft/TypeScript/issues/54593) about dual build support, but they continue to [refuse to rewrite specifiers](https://github.com/microsoft/TypeScript/issues/16577).
+As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using `tsc` without requiring multiple `tsconfig.json` files or extra configuration. The TypeScript team [keep](https://github.com/microsoft/TypeScript/pull/54546) [talking](https://github.com/microsoft/TypeScript/issues/54593) about dual build support, but they continue to [refuse to rewrite specifiers](https://github.com/microsoft/TypeScript/issues/16577).
 
 Fortunately, Node.js has added `--experimental-require-module` so that you can [`require()` ES modules](https://nodejs.org/api/esm.html#require) if they don't use top level await, which sets the stage for possibly no longer requiring dual builds.
