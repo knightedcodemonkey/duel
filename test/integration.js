@@ -16,11 +16,13 @@ const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const extended = resolve(__dirname, '__fixtures__/extended')
+const dualError = resolve(__dirname, '__fixtures__/compileErrorsDual')
 const plainDist = join(plain, 'dist')
 const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const extDist = join(extended, 'dist')
+const errDistDual = join(dualError, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
@@ -217,6 +219,32 @@ describe('duel', () => {
 
     assert.ok(spyExit.mock.calls[0].arguments > 0)
     assert.equal(spy.mock.calls[1].arguments[1], 'Compilation errors found.')
+  })
+
+  /**
+   * Check for compilation errors in the dual build.
+   * This test targets unexpected behavior by tsc:
+   * @see https://github.com/microsoft/TypeScript/issues/58658
+   */
+  it('reports compile errors for the dual build', async t => {
+    const spy = t.mock.method(global.console, 'log')
+    const spyExit = t.mock.method(process, 'exit')
+
+    t.after(async () => {
+      await rmDist(errDistDual)
+    })
+    spyExit.mock.mockImplementation(number => {
+      throw new Error(`Mocked process.exit: ${number}`)
+    })
+    await assert.rejects(
+      async () => {
+        await duel(['-p', dualError])
+      },
+      { message: /Mocked process\.exit/ },
+    )
+
+    assert.ok(spyExit.mock.calls[0].arguments > 0)
+    assert.equal(spy.mock.calls[2].arguments[1], 'Compilation errors found.')
   })
 
   it('reports an error when no package.json file found', async t => {

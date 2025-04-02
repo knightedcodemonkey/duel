@@ -18,13 +18,8 @@ import { getRealPathAsFileUrl, getCompileFiles, logError, log } from './util.js'
 const handleErrorAndExit = message => {
   const exitCode = Number(message)
 
-  if (isNaN(exitCode)) {
-    logError(message)
-    process.exit(1)
-  } else {
-    logError('Compilation errors found.')
-    process.exit(exitCode)
-  }
+  logError('Compilation errors found.')
+  process.exit(exitCode)
 }
 const duel = async args => {
   const ctx = await init(args)
@@ -45,10 +40,6 @@ const duel = async args => {
       return new Promise((resolve, reject) => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
         const build = spawn(tsc, args, { stdio: 'inherit', shell: platform === 'win32' })
-
-        build.on('error', err => {
-          reject(new Error(`Failed to compile: ${err.message}`))
-        })
 
         build.on('exit', code => {
           if (code > 0) {
@@ -92,7 +83,7 @@ const duel = async args => {
         const outFilename = dts.test(filename)
           ? filename.replace(dts, isCjsBuild ? '.d.cts' : '.d.mts')
           : filename.replace(/\.js$/, targetExt)
-        const { code, error } = await specifier.update(filename, ({ value }) => {
+        const update = await specifier.update(filename, ({ value }) => {
           // Collapse any BinaryExpression or NewExpression to test for a relative specifier
           const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
           const relative = /^(?:\.|\.\.)\//
@@ -103,10 +94,8 @@ const duel = async args => {
           }
         })
 
-        if (code && !error) {
-          await writeFile(outFilename, code)
-          await rm(filename, { force: true })
-        }
+        await writeFile(outFilename, update)
+        await rm(filename, { force: true })
       }
     }
     const logSuccess = start => {
