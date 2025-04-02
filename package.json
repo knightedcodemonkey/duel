@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -23,7 +23,7 @@
     "test:integration": "node --test --test-reporter=spec test/integration.js",
     "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/integration.js test/monorepos.js",
-    "build": "node src/duel.js --dirs",
+    "build": "node src/duel.js --dirs --modules",
     "prepack": "npm run build"
   },
   "keywords": [
@@ -69,8 +69,8 @@
     "vite": "^6.2.4"
   },
   "dependencies": {
-    "@knighted/module": "^1.0.0-alpha.5",
-    "@knighted/specifier": "^2.0.0",
+    "@knighted/module": "^1.0.0-alpha.6",
+    "@knighted/specifier": "^2.0.1",
     "find-up": "^6.3.0",
     "get-tsconfig": "^4.10.0",
     "glob": "^11.0.1",
