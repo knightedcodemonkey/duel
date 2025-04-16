@@ -261,7 +261,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      //await rmDist(extDist)
+      await rmDist(extDist)
     })
     await duel(['-p', join(extended, 'src')])
 
