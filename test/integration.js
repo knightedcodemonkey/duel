@@ -261,7 +261,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      await rmDist(extDist)
+      //await rmDist(extDist)
     })
     await duel(['-p', join(extended, 'src')])
 
@@ -273,13 +273,13 @@ describe('duel', () => {
     // Check for runtime errors against Node.js
     const { status: statusEsm } = spawnSync(
       'node',
-      ['test/__fixtures__/extended/dist/other.js'],
+      ['test/__fixtures__/extended/dist/file.js'],
       { shell, stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
     const { status: statusCjs } = spawnSync(
       'node',
-      ['test/__fixtures__/extended/dist/cjs/other.cjs'],
+      ['test/__fixtures__/extended/dist/cjs/file.cjs'],
       { shell, stdio: 'inherit' },
     )
     assert.equal(statusCjs, 0)
