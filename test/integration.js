@@ -39,21 +39,21 @@ describe('duel', () => {
     await rmDist(extDist)
   })
 
-  it.skip('prints options help', async t => {
+  it('prints options help', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--help'])
     assert.ok(spy.mock.calls[1].arguments[0].startsWith('Options:'))
   })
 
-  it.skip('reports errors when passing invalid options', async t => {
+  it('reports errors when passing invalid options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--invalid'])
     assert.equal(spy.mock.calls[0].arguments[1], "Unknown option '--invalid'")
   })
 
-  it.skip('uses default --project value of "tsconfig.json"', async t => {
+  it('uses default --project value of "tsconfig.json"', async t => {
     const spy = t.mock.method(global.console, 'log')
     const tsConfigPath = resolve('./tsconfig.json')
     const tsConfigPathTemp = tsConfigPath.replace('tsconfig', 'tsconfig.temp')
@@ -64,14 +64,14 @@ describe('duel', () => {
     await rename(tsConfigPathTemp, tsConfigPath)
   })
 
-  it.skip('reports errors when --project is a directory with no tsconfig.json', async t => {
+  it('reports errors when --project is a directory with no tsconfig.json', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['-p', 'test/__fixtures__'])
     assert.ok(spy.mock.calls[0].arguments[1].endsWith('no tsconfig.json.'))
   })
 
-  it.skip('reports errors when using deprecated --target-extension', async t => {
+  it('reports errors when using deprecated --target-extension', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['-x', '.mjs'])
@@ -84,7 +84,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      //await rmDist(esmDist)
+      await rmDist(esmDist)
     })
     await duel(['--project', 'test/__fixtures__/esmProject', '-m'])
 
@@ -95,10 +95,14 @@ describe('duel', () => {
     // Check that the expected files and extensions are there
     assert.ok(existsSync(resolve(esmDist, 'index.js')))
     assert.ok(existsSync(resolve(esmDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(esmDist, 'folder/module.js')))
+    assert.ok(existsSync(resolve(esmDist, 'folder/module.d.ts')))
     assert.ok(existsSync(resolve(esmDist, 'cjs.cjs')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/index.cjs')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/index.d.cts')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/esm.mjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/folder/module.cjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/folder/module.d.cts')))
 
     // Check that there are no `exports.esm` statements in the .mjs file
     const mjs = (await readFile(resolve(esmDist, 'cjs/esm.mjs'))).toString()
@@ -128,7 +132,7 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
-      //await rmDist(cjsDist)
+      await rmDist(cjsDist)
     })
     await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-m'])
 
@@ -137,7 +141,14 @@ describe('duel', () => {
     )
     assert.ok(existsSync(resolve(cjsDist, 'index.js')))
     assert.ok(existsSync(resolve(cjsDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'folder/module.js')))
+    assert.ok(existsSync(resolve(cjsDist, 'folder/module.d.ts')))
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/cjs.cjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/folder/module.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/folder/module.d.mts')))
 
     // Check that the files are using the correct module system
     const mjs = (await readFile(resolve(cjsDist, 'esm.mjs'))).toString()
@@ -162,7 +173,7 @@ describe('duel', () => {
     assert.equal(statusEsm, 0)
   })
 
-  it.skip('supports both builds output to directories', async t => {
+  it('supports both builds output to directories', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
@@ -179,7 +190,7 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
 
-  it.skip('supports import attributes and ts import assertion resolution mode', async t => {
+  it('supports import attributes and ts import assertion resolution mode', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
@@ -192,7 +203,7 @@ describe('duel', () => {
     )
   })
 
-  it.skip('works as a cli script', { skip: shell }, () => {
+  it('works as a cli script', { skip: shell }, () => {
     const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,
     })
@@ -200,7 +211,7 @@ describe('duel', () => {
     assert.ok(resp.toString().indexOf('Options:') > -1)
   })
 
-  it.skip('reports compilation errors during a build', async t => {
+  it('reports compilation errors during a build', async t => {
     const spy = t.mock.method(global.console, 'log')
     const spyExit = t.mock.method(process, 'exit')
 
@@ -223,10 +234,11 @@ describe('duel', () => {
 
   /**
    * Check for compilation errors in the dual build.
+   * `The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.`
    * This test targets unexpected behavior by tsc:
    * @see https://github.com/microsoft/TypeScript/issues/58658
    */
-  it.skip('reports compile errors for the dual build', async t => {
+  it('reports compile errors for the dual build', async t => {
     const spy = t.mock.method(global.console, 'log')
     const spyExit = t.mock.method(process, 'exit')
 
@@ -244,10 +256,11 @@ describe('duel', () => {
     )
 
     assert.ok(spyExit.mock.calls[0].arguments > 0)
+    assert.ok(spy.mock.calls[1].arguments[0].includes('Starting dual build...'))
     assert.equal(spy.mock.calls[2].arguments[1], 'Compilation errors found.')
   })
 
-  it.skip('reports an error when no package.json file found', async t => {
+  it('reports an error when no package.json file found', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
@@ -257,7 +270,7 @@ describe('duel', () => {
     assert.equal(spy.mock.calls[0].arguments[1], 'No package.json file found.')
   })
 
-  it.skip('supports extended configs', async t => {
+  it('supports extended configs', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
