@@ -95,10 +95,14 @@ describe('duel', () => {
     // Check that the expected files and extensions are there
     assert.ok(existsSync(resolve(esmDist, 'index.js')))
     assert.ok(existsSync(resolve(esmDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(esmDist, 'folder/module.js')))
+    assert.ok(existsSync(resolve(esmDist, 'folder/module.d.ts')))
     assert.ok(existsSync(resolve(esmDist, 'cjs.cjs')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/index.cjs')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/index.d.cts')))
     assert.ok(existsSync(resolve(esmDist, 'cjs/esm.mjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/folder/module.cjs')))
+    assert.ok(existsSync(resolve(esmDist, 'cjs/folder/module.d.cts')))
 
     // Check that there are no `exports.esm` statements in the .mjs file
     const mjs = (await readFile(resolve(esmDist, 'cjs/esm.mjs'))).toString()
@@ -137,7 +141,14 @@ describe('duel', () => {
     )
     assert.ok(existsSync(resolve(cjsDist, 'index.js')))
     assert.ok(existsSync(resolve(cjsDist, 'index.d.ts')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'folder/module.js')))
+    assert.ok(existsSync(resolve(cjsDist, 'folder/module.d.ts')))
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/cjs.cjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/folder/module.mjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/folder/module.d.mts')))
 
     // Check that the files are using the correct module system
     const mjs = (await readFile(resolve(cjsDist, 'esm.mjs'))).toString()
@@ -223,6 +234,7 @@ describe('duel', () => {
 
   /**
    * Check for compilation errors in the dual build.
+   * `The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.`
    * This test targets unexpected behavior by tsc:
    * @see https://github.com/microsoft/TypeScript/issues/58658
    */
@@ -244,6 +256,7 @@ describe('duel', () => {
     )
 
     assert.ok(spyExit.mock.calls[0].arguments > 0)
+    assert.ok(spy.mock.calls[1].arguments[0].includes('Starting dual build...'))
     assert.equal(spy.mock.calls[2].arguments[1], 'Compilation errors found.')
   })
 

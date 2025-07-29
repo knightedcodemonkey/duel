@@ -144,9 +144,12 @@ const duel = async args => {
          * Transform ambiguous modules for the target dual build.
          * @see https://github.com/microsoft/TypeScript/issues/58658
          */
-        const toTransform = await glob(`${subDir}/**/*{.js,.jsx,.ts,.tsx}`, {
-          ignore: 'node_modules/**',
-        })
+        const toTransform = await glob(
+          `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
+          {
+            ignore: 'node_modules/**',
+          },
+        )
 
         for (const file of toTransform) {
           /**
@@ -194,9 +197,12 @@ const duel = async args => {
       }
 
       if (success) {
-        const filenames = await glob(`${absoluteDualOutDir}/**/*{.js,.d.ts}`, {
-          ignore: 'node_modules/**',
-        })
+        const filenames = await glob(
+          `${absoluteDualOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
+          {
+            ignore: 'node_modules/**',
+          },
+        )
 
         await updateSpecifiersAndFileExtensions(filenames)
         logSuccess(startTime)
