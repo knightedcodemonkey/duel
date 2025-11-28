@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   publish:
     if: contains('["knightedcodemonkey"]', github.actor)
@@ -12,13 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       - name: Setup Node
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v4.3.0
         with:
-          node-version: '22.17.1'
+          node-version: '24.11.1'
       - name: Install Dependencies
         run: npm ci
       - name: Save error log
-        uses: actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@v4.6.2
         if: ${{ failure() }}
         with:
           name: npm-debug-log-${{ hashFiles('package-lock.json') }}
@@ -30,8 +34,7 @@ jobs:
       - name: Pack
         run: npm pack
       - name: Push to NPM registry
-        uses: JS-DevTools/npm-publish@v3.1.1
+        uses: JS-DevTools/npm-publish@v4.1.1
         with:
-          token: ${{ secrets.NPM_AUTH_TOKEN }}
-          tag: ${{ contains(github.ref, '-') && 'next' || 'latest' }}
           access: public
+          tag: ${{ contains(github.ref, '-') && 'next' || 'latest' }}
