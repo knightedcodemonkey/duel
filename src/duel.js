@@ -3,12 +3,12 @@
 import { argv, platform } from 'node:process'
 import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, mkdir, cp } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, cp, access } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 import { glob } from 'glob'
-import { findUp, pathExists } from 'find-up'
+import { findUp } from 'find-up'
 import { specifier } from '@knighted/specifier'
 import { transform } from '@knighted/module'
 
@@ -30,8 +30,11 @@ const duel = async args => {
       async dir => {
         const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
 
-        if (await pathExists(tscBin)) {
+        try {
+          await access(tscBin)
           return tscBin
+        } catch {
+          /* continue */
         }
       },
       { cwd: projectDir },
