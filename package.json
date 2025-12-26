@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -20,13 +20,15 @@
   },
   "engineStrict": true,
   "scripts": {
-    "prettier": "prettier -w *.js src/*.js test/*.js",
+    "prettier": "prettier -w *.js *.md docs/*.md src/*.js test/*.js",
+    "prettier:check": "prettier --check --ignore-unknown *.js *.md docs/*.md src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
     "test:integration": "node --test --test-reporter=spec test/integration.js",
     "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
     "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/integration.js test/monorepos.js",
     "build": "node src/duel.js --dirs --modules",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "prepare": "husky"
   },
   "keywords": [
     "node",
@@ -71,6 +73,8 @@
     "eslint": "^9.39.1",
     "eslint-plugin-n": "^17.23.1",
     "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "node-module-type": "^1.0.4",
     "prettier": "^3.6.2",
     "tsx": "^4.20.6",
@@ -84,6 +88,15 @@
     "get-tsconfig": "^4.13.0",
     "glob": "^13.0.0",
     "read-package-up": "^12.0.0"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,cts,mts,jsx,tsx}": [
+      "eslint --max-warnings=0",
+      "prettier --check --ignore-unknown"
+    ],
+    "*.{md,json,yml,yaml}": [
+      "prettier --check --ignore-unknown"
+    ]
   },
   "prettier": {
     "arrowParens": "avoid",
