@@ -14,7 +14,6 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 - Transforms the [differences between ES modules and CommonJS](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs).
 - Works with monorepos.
 
-
 ## Requirements
 
 - Node >= 20.11.0
@@ -121,3 +120,7 @@ These are definitely edge cases, and would only really come up if your project m
 As far as I can tell, `duel` is one (if not the only) way to get a correct dual package build using `tsc` without requiring multiple `tsconfig.json` files or extra configuration. The TypeScript team [keep](https://github.com/microsoft/TypeScript/pull/54546) [talking](https://github.com/microsoft/TypeScript/issues/54593) about dual build support, but they continue to [refuse to rewrite specifiers](https://github.com/microsoft/TypeScript/issues/16577).
 
 Fortunately, Node.js has added `--experimental-require-module` so that you can [`require()` ES modules](https://nodejs.org/api/esm.html#require) if they don't use top level await, which sets the stage for possibly no longer requiring dual builds.
+
+## Documentation
+
+- [docs/faq.md](docs/faq.md)

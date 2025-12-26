@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -20,7 +20,7 @@
   },
   "engineStrict": true,
   "scripts": {
-    "prettier": "prettier -w *.js src/*.js test/*.js",
+    "prettier": "prettier -w *.js *.md docs/*.md src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
     "test:integration": "node --test --test-reporter=spec test/integration.js",
     "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
