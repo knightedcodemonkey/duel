@@ -3,13 +3,12 @@
 import { argv, platform } from 'node:process'
 import { join, dirname, resolve, relative } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, mkdir, cp, access } from 'node:fs/promises'
+import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 import { glob } from 'glob'
 import { findUp } from 'find-up'
-import { specifier } from '@knighted/specifier'
 import { transform } from '@knighted/module'
 
 import { init } from './init.js'
@@ -58,7 +57,11 @@ const duel = async args => {
     const absoluteOutDir = resolve(projectDir, outDir)
     const originalType = pkg.packageJson.type ?? 'commonjs'
     const isCjsBuild = originalType !== 'commonjs'
-    const targetExt = isCjsBuild ? '.cjs' : '.mjs'
+    const primaryOutDir = dirs
+      ? isCjsBuild
+        ? join(absoluteOutDir, 'esm')
+        : join(absoluteOutDir, 'cjs')
+      : absoluteOutDir
     const hex = randomBytes(4).toString('hex')
     const getOverrideTsConfig = () => {
       return {
@@ -71,34 +74,50 @@ const duel = async args => {
       }
     }
     const runPrimaryBuild = () => {
-      return runBuild(
-        configPath,
-        dirs
-          ? isCjsBuild
-            ? join(absoluteOutDir, 'esm')
-            : join(absoluteOutDir, 'cjs')
-          : absoluteOutDir,
-      )
+      return runBuild(configPath, primaryOutDir)
     }
-    const updateSpecifiersAndFileExtensions = async filenames => {
+    const updateSpecifiersAndFileExtensions = async (filenames, target, ext) => {
       for (const filename of filenames) {
         const dts = /(\.d\.ts)$/
-        const outFilename = dts.test(filename)
-          ? filename.replace(dts, isCjsBuild ? '.d.cts' : '.d.mts')
-          : filename.replace(/\.js$/, targetExt)
-        const update = await specifier.update(filename, ({ value }) => {
-          // Collapse any BinaryExpression or NewExpression to test for a relative specifier
-          const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
-          const relative = /^(?:\.|\.\.)\//
+        const isDts = dts.test(filename)
+        const outFilename = isDts
+          ? filename.replace(dts, target === 'commonjs' ? '.d.cts' : '.d.mts')
+          : filename.replace(/\.js$/, ext)
 
-          if (relative.test(collapsed)) {
-            // $2 is for any closing quotation/parens around BE or NE
-            return value.replace(/(.+)\.js([)'"`]*)?$/, `$1${targetExt}$2`)
+        if (isDts) {
+          const source = await readFile(filename, 'utf8')
+          const rewritten = source.replace(
+            /(?<=['"])(\.\.?(?:\/[\w.-]+)*)\.js(?=['"])/g,
+            `$1${ext}`,
+          )
+
+          await writeFile(outFilename, rewritten)
+
+          if (outFilename !== filename) {
+            await rm(filename, { force: true })
           }
-        })
 
-        await writeFile(outFilename, update)
-        await rm(filename, { force: true })
+          continue
+        }
+
+        const rewriteSpecifier = (value = '') => {
+          const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
+          if (/^(?:\.|\.\.)\//.test(collapsed)) {
+            return value.replace(/(.+)\.js([)"'`]*)?$/, `$1${ext}$2`)
+          }
+        }
+
+        const writeOptions = {
+          target,
+          rewriteSpecifier,
+          ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
+        }
+
+        await transform(filename, writeOptions)
+
+        if (outFilename !== filename) {
+          await rm(filename, { force: true })
+        }
       }
     }
     const logSuccess = start => {
@@ -138,9 +157,15 @@ const duel = async args => {
         dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
         await mkdir(subDir)
         await Promise.all(
-          compileFiles.map(file =>
-            cp(file, join(subDir, relative(projectDir, file).replace(/^(\.\.\/)*/, ''))),
-          ),
+          compileFiles.map(async file => {
+            const dest = join(
+              subDir,
+              relative(projectDir, file).replace(/^(\.\.\/)+/, ''),
+            )
+
+            await mkdir(dirname(dest), { recursive: true })
+            await cp(file, dest)
+          }),
         )
 
         /**
@@ -163,7 +188,11 @@ const duel = async args => {
            *
            * @see https://github.com/microsoft/TypeScript/issues/58658
            */
-          await transform(file, { out: file, type: isCjsBuild ? 'commonjs' : 'module' })
+          await transform(file, {
+            out: file,
+            target: isCjsBuild ? 'commonjs' : 'module',
+            transformSyntax: false,
+          })
         }
       }
 
@@ -200,6 +229,8 @@ const duel = async args => {
       }
 
       if (success) {
+        const dualTarget = isCjsBuild ? 'commonjs' : 'module'
+        const dualTargetExt = isCjsBuild ? '.cjs' : dirs ? '.js' : '.mjs'
         const filenames = await glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
           {
@@ -207,7 +238,16 @@ const duel = async args => {
           },
         )
 
-        await updateSpecifiersAndFileExtensions(filenames)
+        await updateSpecifiersAndFileExtensions(filenames, dualTarget, dualTargetExt)
+
+        if (dirs && originalType === 'commonjs') {
+          const primaryFiles = await glob(
+            `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
+            { ignore: 'node_modules/**' },
+          )
+
+          await updateSpecifiersAndFileExtensions(primaryFiles, 'commonjs', '.cjs')
+        }
         logSuccess(startTime)
       }
     }

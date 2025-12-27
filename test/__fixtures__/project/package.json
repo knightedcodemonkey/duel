@@ -1,18 +1,4 @@
 {
   "version": "0.0.0",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
-      },
-      "default": "./dist/esm/index.js"
-    },
-    "./package.json": "./package.json"
-  }
+  "type": "module"
 }
