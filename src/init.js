@@ -42,6 +42,11 @@ const init = async args => {
           type: 'string',
           short: 'e',
         },
+        'transform-syntax': {
+          type: 'boolean',
+          short: 's',
+          default: false,
+        },
         help: {
           type: 'boolean',
           short: 'h',
@@ -86,6 +91,11 @@ const init = async args => {
       'info',
       bare,
     )
+    log(
+      '--transform-syntax, -s \t Opt in to full syntax lowering via @knighted/module (default is globals-only).',
+      'info',
+      bare,
+    )
     log('--help, -h \t\t Print this message.', 'info', bare)
   } else {
     const {
@@ -95,6 +105,7 @@ const init = async args => {
       modules,
       dirs,
       exports: exportsOpt,
+      'transform-syntax': transformSyntax,
     } = parsed
     let configPath = resolve(project)
     let stats = null
@@ -160,6 +171,7 @@ const init = async args => {
         pkg,
         dirs,
         modules,
+        transformSyntax,
         exports: exportsOpt,
         tsconfig,
         projectDir,

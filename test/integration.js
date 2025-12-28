@@ -352,6 +352,36 @@ describe('duel', () => {
     )
   })
 
+  it('supports full syntax transforms when requested', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(plainDist)
+    })
+
+    await duel(['-p', plain, '-k', plain, '-s'])
+
+    const logs = spy.mock.calls.map((_, i) => logged(spy, i))
+
+    assert.match(logs[0], /^Starting primary build/)
+    assert.match(logs[1], /^Starting dual build/)
+    assert.match(logs[2], /^Successfully created a dual CJS build in \d+ms\./)
+    assert.ok(existsSync(resolve(plainDist, 'index.js')))
+    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+
+    const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
+      shell,
+      stdio: 'inherit',
+    })
+    const { status: statusCjs } = spawnSync('node', [join(plainDist, 'cjs/index.cjs')], {
+      shell,
+      stdio: 'inherit',
+    })
+
+    assert.equal(statusEsm, 0)
+    assert.equal(statusCjs, 0)
+  })
+
   it('works as a cli script', { skip: shell }, () => {
     const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,

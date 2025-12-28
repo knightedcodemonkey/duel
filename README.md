@@ -103,6 +103,7 @@ The available options are limited, because you should define most of them inside
 - `--modules, -m` Transform module globals for dual build target. Defaults to false.
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
+- `--transform-syntax, -s` Opt in to full syntax lowering via `@knighted/module` (default is globals-only).
 
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
@@ -117,6 +118,8 @@ Options:
 --pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to --project directory.
 --modules, -m 		 Transform module globals for dual build target. Defaults to false.
 --dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
+--exports, -e 	 Generate package.json exports. Values: wildcard | dir | name.
+--transform-syntax, -s 	 Opt in to full syntax lowering via @knighted/module (default is globals-only).
 --help, -h 		 Print this message.
 ```
 
