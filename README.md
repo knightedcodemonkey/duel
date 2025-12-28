@@ -16,7 +16,7 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 
 ## Requirements
 
-- Node >= 20.11.0
+- Node >= 22.21.1 (<23) or >= 24 (<25)
 
 ## Example
 
@@ -72,6 +72,13 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 ### Module transforms
 
 TypeScript will throw compiler errors when using `import.meta` globals while targeting a CommonJS dual build, but _will not_ throw compiler errors when the inverse is true, i.e. using CommonJS globals (`__filename`, `__dirname`, etc.) while targeting an ES module dual build. There is an [open issue](https://github.com/microsoft/TypeScript/issues/58658) regarding this unexpected behavior. You can use the `--modules` option to have the [differences between ES modules and CommonJS](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs) transformed by `duel` prior to running compilation with `tsc` so that there are no compilation or runtime errors.
+
+`duel` infers the primary vs dual build orientation from your `package.json` `type`:
+
+- `"type": "module"` → primary ESM, dual CJS
+- `"type": "commonjs"` → primary CJS, dual ESM
+
+The `--dirs` flag nests outputs under `outDir/esm` and `outDir/cjs` accordingly.
 
 Note, there is a slight performance penalty since your project needs to be copied first to run the transforms before compiling with `tsc`.
 
