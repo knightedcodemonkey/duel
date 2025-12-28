@@ -404,10 +404,14 @@ const duel = async args => {
         )
 
         for (const file of toTransform) {
+          const isTsLike = /\.[cm]?tsx?$/.test(file)
+          const transformSyntaxMode =
+            syntaxMode === true && isTsLike ? 'globals-only' : syntaxMode
+
           await transform(file, {
             out: file,
             target: isCjsBuild ? 'commonjs' : 'module',
-            transformSyntax: syntaxMode,
+            transformSyntax: transformSyntaxMode,
           })
         }
       }

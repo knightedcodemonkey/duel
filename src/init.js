@@ -47,6 +47,9 @@ const init = async args => {
           short: 's',
           default: false,
         },
+        mode: {
+          type: 'string',
+        },
         help: {
           type: 'boolean',
           short: 'h',
@@ -67,36 +70,41 @@ const init = async args => {
     log('Usage: duel [options]\n', 'info', bare)
     log('Options:', 'info', bare)
     log(
-      "--project, -p [path] \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      "--project, -p [path] \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
       'info',
       bare,
     )
     log(
-      '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to --project directory.',
+      '--pkg-dir, -k [path] \t\t The directory to start looking for a package.json file. Defaults to --project directory.',
       'info',
       bare,
     )
     log(
-      '--modules, -m \t\t Transform module globals for dual build target. Defaults to false.',
+      '--modules, -m \t\t\t Transform module globals for dual build target. Defaults to false.',
       'info',
       bare,
     )
     log(
-      '--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].',
+      '--dirs, -d \t\t\t Output both builds to directories inside of outDir. [esm, cjs].',
       'info',
       bare,
     )
     log(
-      '--exports, -e \t\t Generate package.json exports. Values: wildcard | dir | name.',
+      '--exports, -e \t\t\t Generate package.json exports. Values: wildcard | dir | name.',
       'info',
       bare,
     )
     log(
-      '--transform-syntax, -s \t Opt in to full syntax lowering via @knighted/module (default is globals-only).',
+      '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only).',
       'info',
       bare,
     )
-    log('--help, -h \t\t Print this message.', 'info', bare)
+    log(
+      '--mode [none|globals|full] \t Optional shorthand for module transforms and syntax lowering.',
+      'info',
+      bare,
+    )
+    log('--help, -h \t\t\t Print this message.', 'info', bare)
   } else {
     const {
       project,
@@ -106,10 +114,17 @@ const init = async args => {
       dirs,
       exports: exportsOpt,
       'transform-syntax': transformSyntax,
+      mode,
     } = parsed
     let configPath = resolve(project)
     let stats = null
     let pkg = null
+
+    if (mode && !['none', 'globals', 'full'].includes(mode)) {
+      logError('--mode expects one of: none | globals | full')
+
+      return false
+    }
 
     if (targetExt) {
       logError(
@@ -167,11 +182,29 @@ const init = async args => {
         return false
       }
 
+      let modulesFinal = modules
+      let transformSyntaxFinal = transformSyntax
+
+      if (mode) {
+        if (mode === 'none') {
+          modulesFinal = false
+          transformSyntaxFinal = false
+        } else if (mode === 'globals') {
+          modulesFinal = true
+          transformSyntaxFinal = false
+        } else if (mode === 'full') {
+          modulesFinal = true
+          transformSyntaxFinal = true
+        }
+      } else if (transformSyntax && !modules) {
+        modulesFinal = true
+      }
+
       return {
         pkg,
         dirs,
-        modules,
-        transformSyntax,
+        modules: modulesFinal,
+        transformSyntax: transformSyntaxFinal,
         exports: exportsOpt,
         tsconfig,
         projectDir,
