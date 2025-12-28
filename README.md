@@ -108,20 +108,7 @@ The available options are limited, because you should define most of them inside
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
 
-You can run `duel --help` to get the same info. Below is the output of that:
-
-```console
-Usage: duel [options]
-
-Options:
---project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
---pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to --project directory.
---modules, -m 		 Transform module globals for dual build target. Defaults to false.
---dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
---exports, -e 		 Generate package.json exports. Values: wildcard | dir | name.
---transform-syntax, -s 	 Opt in to full syntax lowering via @knighted/module (default is globals-only).
---help, -h 		 Print this message.
-```
+You can run `duel --help` to get the same info.
 
 ## Gotchas
 
