@@ -12,7 +12,13 @@ import { findUp } from 'find-up'
 import { transform } from '@knighted/module'
 
 import { init } from './init.js'
-import { getRealPathAsFileUrl, getCompileFiles, logError, log } from './util.js'
+import {
+  getRealPathAsFileUrl,
+  getCompileFiles,
+  log,
+  logError,
+  logSuccess as logSuccessBadge,
+} from './util.js'
 
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
@@ -324,6 +330,7 @@ const duel = async args => {
         const writeOptions = {
           target,
           rewriteSpecifier,
+          transformSyntax: 'globals-only',
           ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
         }
 
@@ -335,7 +342,7 @@ const duel = async args => {
       }
     }
     const logSuccess = start => {
-      log(
+      logSuccessBadge(
         `Successfully created a dual ${isCjsBuild ? 'CJS' : 'ESM'} build in ${Math.round(
           performance.now() - start,
         )}ms.`,
@@ -405,7 +412,7 @@ const duel = async args => {
           await transform(file, {
             out: file,
             target: isCjsBuild ? 'commonjs' : 'module',
-            transformSyntax: false,
+            transformSyntax: 'globals-only',
           })
         }
       }
