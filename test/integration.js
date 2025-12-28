@@ -190,6 +190,25 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
 
+  it('supports dirs when original package type is CJS', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(cjsDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-d'])
+
+    assert.ok(spy.mock.calls[0].arguments[0].startsWith('Starting primary build'))
+    assert.ok(
+      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual ESM build'),
+    )
+    assert.ok(existsSync(resolve(cjsDist, 'cjs/index.cjs')))
+    assert.ok(existsSync(resolve(cjsDist, 'cjs/index.d.cts')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/index.js')))
+    assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
+  })
+
   it('supports import attributes and ts import assertion resolution mode', async t => {
     const spy = t.mock.method(global.console, 'log')
 
