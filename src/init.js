@@ -38,6 +38,10 @@ const init = async args => {
           short: 'd',
           default: false,
         },
+        exports: {
+          type: 'string',
+          short: 'e',
+        },
         help: {
           type: 'boolean',
           short: 'h',
@@ -66,6 +70,7 @@ const init = async args => {
       '--modules, -m \t\t Transform module globals for dual build target. Defaults to false.',
     )
     log('--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].')
+    log('--exports, -e \t Generate package.json exports. Values: wildcard | dir | name.')
     log('--help, -h \t\t Print this message.')
   } else {
     const {
@@ -74,6 +79,7 @@ const init = async args => {
       'pkg-dir': pkgDir,
       modules,
       dirs,
+      exports: exportsOpt,
     } = parsed
     let configPath = resolve(project)
     let stats = null
@@ -129,10 +135,17 @@ const init = async args => {
         log('No outDir defined in tsconfig.json. Build output will be in "dist".')
       }
 
+      if (exportsOpt && !['wildcard', 'dir', 'name'].includes(exportsOpt)) {
+        logError('--exports expects one of: wildcard | dir | name')
+
+        return false
+      }
+
       return {
         pkg,
         dirs,
         modules,
+        exports: exportsOpt,
         tsconfig,
         projectDir,
         configPath,
