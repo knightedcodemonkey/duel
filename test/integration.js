@@ -2,7 +2,7 @@ import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
-import { rm, readFile, rename } from 'node:fs/promises'
+import { rm, readFile, rename, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { spawnSync, execSync } from 'node:child_process'
 import { platform } from 'node:process'
@@ -207,6 +207,99 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(cjsDist, 'cjs/index.d.cts')))
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.js')))
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
+  })
+
+  it('generates exports when requested', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '--exports', 'name'])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = updatedPkg.exports
+
+    assert.ok(exp)
+    assert.equal(exp['.']?.import, './dist/index.js')
+    assert.equal(exp['.']?.require, './dist/cjs/index.cjs')
+    assert.equal(exp['.']?.types, './dist/index.d.ts')
+    assert.equal(exp['.']?.default, './dist/index.js')
+    assert.equal(exp['./index']?.import, './dist/index.js')
+    assert.equal(exp['./index']?.require, './dist/cjs/index.cjs')
+    assert.equal(exp['./index']?.types, './dist/index.d.ts')
+    assert.equal(exp['./index']?.default, './dist/index.js')
+  })
+
+  it('uses extensionless subpaths with dir exports', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '--exports', 'dir'])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = updatedPkg.exports
+
+    assert.ok(exp?.['.'])
+    assert.ok(exp?.['./folder'])
+
+    for (const key of Object.keys(exp ?? {}).filter(key => key !== '.')) {
+      assert.ok(!/\.[mc]?js$/i.test(key))
+      assert.ok(!/\.d\.[mc]?ts$/i.test(key))
+    }
+
+    const folder = exp['./folder']
+
+    assert.ok(folder.import || folder.require)
+    if (folder.import) {
+      assert.ok(!folder.import.includes('/dist/cjs/'))
+      assert.ok(/\.m?js$/i.test(folder.import))
+    }
+    assert.ok(/\.cjs$/i.test(folder.require ?? ''))
+    assert.ok(/\.d\.(ts|mts|cts)$/i.test(folder.types ?? ''))
+    assert.equal(folder.default, folder.import ?? folder.require)
+  })
+
+  it('uses extensionless subpaths with wildcard exports', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '--exports', 'wildcard'])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = updatedPkg.exports
+
+    assert.ok(exp?.['.'])
+    assert.ok(exp?.['./folder/*'])
+
+    for (const key of Object.keys(exp ?? {}).filter(key => key !== '.')) {
+      assert.ok(!/\.[mc]?js$/i.test(key))
+      assert.ok(!/\.d\.[mc]?ts$/i.test(key))
+    }
+
+    const folder = exp['./folder/*']
+
+    assert.ok(folder.import || folder.require)
+    if (folder.import) {
+      assert.ok(!folder.import.includes('/dist/cjs/'))
+      assert.ok(/\.m?js$/i.test(folder.import))
+    }
+    assert.ok(/\.cjs$/i.test(folder.require ?? ''))
+    assert.ok(/\.d\.(ts|mts|cts)$/i.test(folder.types ?? ''))
+    assert.equal(folder.default, folder.import ?? folder.require)
   })
 
   it('supports import attributes and ts import assertion resolution mode', async t => {

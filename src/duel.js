@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import { join, dirname, resolve, relative } from 'node:path'
+import { join, dirname, resolve, relative, posix, parse as parsePath } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -14,17 +14,229 @@ import { transform } from '@knighted/module'
 import { init } from './init.js'
 import { getRealPathAsFileUrl, getCompileFiles, logError, log } from './util.js'
 
+const stripKnownExt = path => {
+  return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
+}
+
+const ensureDotSlash = path => {
+  return path.startsWith('./') ? path : `./${path}`
+}
+
+const getSubpath = (mode, relFromRoot) => {
+  const parsed = parsePath(relFromRoot)
+  const segments = parsed.dir.split('/').filter(Boolean)
+
+  if (mode === 'name') {
+    return parsed.name ? `./${parsed.name}` : null
+  }
+
+  if (mode === 'dir') {
+    const last = segments.at(-1)
+    return last ? `./${last}` : null
+  }
+
+  if (mode === 'wildcard') {
+    const first = segments[0]
+    return first ? `./${first}/*` : null
+  }
+
+  return null
+}
+
 const handleErrorAndExit = message => {
   const exitCode = Number(message)
 
   logError('Compilation errors found.')
   process.exit(exitCode)
 }
+
+const generateExports = async options => {
+  const { mode, pkg, pkgDir, esmRoot, cjsRoot, mainDefaultKind, mainPath } = options
+
+  const toPosix = path => path.replace(/\\/g, '/')
+  const esmRootPosix = toPosix(esmRoot)
+  const cjsRootPosix = toPosix(cjsRoot)
+  const esmIgnore = ['node_modules/**']
+  const cjsIgnore = ['node_modules/**']
+  const baseMap = new Map()
+  const subpathMap = new Map()
+  const baseToSubpath = new Map()
+
+  if (cjsRootPosix.startsWith(`${esmRootPosix}/`)) {
+    esmIgnore.push(`${cjsRootPosix}/**`)
+  }
+
+  if (esmRootPosix.startsWith(`${cjsRootPosix}/`)) {
+    cjsIgnore.push(`${esmRootPosix}/**`)
+  }
+
+  const recordPath = (kind, filePath, root) => {
+    const relPkg = toPosix(posix.relative(pkgDir, filePath))
+    const relFromRoot = toPosix(posix.relative(root, filePath))
+    const withDot = ensureDotSlash(relPkg)
+    const baseKey = stripKnownExt(relPkg)
+    const baseEntry = baseMap.get(baseKey) ?? {}
+
+    baseEntry[kind] = withDot
+    baseMap.set(baseKey, baseEntry)
+
+    const subpath = getSubpath(mode, relFromRoot)
+
+    if (kind === 'types') {
+      const mappedSubpath = baseToSubpath.get(baseKey)
+
+      if (mappedSubpath) {
+        const subEntry = subpathMap.get(mappedSubpath) ?? {}
+        subEntry.types = withDot
+        subpathMap.set(mappedSubpath, subEntry)
+      }
+
+      return
+    }
+
+    if (subpath && subpath !== '.') {
+      const subEntry = subpathMap.get(subpath) ?? {}
+      subEntry[kind] = withDot
+      subpathMap.set(subpath, subEntry)
+      baseToSubpath.set(baseKey, subpath)
+    }
+  }
+
+  const esmFiles = await glob(`${esmRootPosix}/**/*.{js,mjs,d.ts,d.mts}`, {
+    ignore: esmIgnore,
+  })
+
+  for (const file of esmFiles) {
+    if (/\.d\.(ts|mts)$/.test(file)) {
+      recordPath('types', file, esmRoot)
+    } else {
+      recordPath('import', file, esmRoot)
+    }
+  }
+
+  const cjsFiles = await glob(`${cjsRootPosix}/**/*.{js,cjs,d.ts,d.cts}`, {
+    ignore: cjsIgnore,
+  })
+
+  for (const file of cjsFiles) {
+    if (/\.d\.(ts|cts)$/.test(file)) {
+      recordPath('types', file, cjsRoot)
+    } else {
+      recordPath('require', file, cjsRoot)
+    }
+  }
+
+  const exportsMap = {}
+  const mainBase = mainPath ? stripKnownExt(mainPath.replace(/^\.\//, '')) : null
+  const mainEntry = mainBase ? (baseMap.get(mainBase) ?? {}) : {}
+
+  if (mainPath) {
+    const rootEntry = {}
+
+    if (mainEntry.types) {
+      rootEntry.types = mainEntry.types
+    }
+
+    if (mainDefaultKind === 'import') {
+      rootEntry.import = mainEntry.import ?? ensureDotSlash(mainPath)
+      if (mainEntry.require) {
+        rootEntry.require = mainEntry.require
+      }
+    } else {
+      rootEntry.require = mainEntry.require ?? ensureDotSlash(mainPath)
+      if (mainEntry.import) {
+        rootEntry.import = mainEntry.import
+      }
+    }
+
+    rootEntry.default = ensureDotSlash(mainPath)
+
+    exportsMap['.'] = rootEntry
+  }
+
+  const defaultKind = mainDefaultKind ?? 'import'
+
+  for (const [subpath, entry] of subpathMap.entries()) {
+    const out = {}
+
+    if (entry.types) {
+      out.types = entry.types
+    }
+    if (entry.import) {
+      out.import = entry.import
+    }
+    if (entry.require) {
+      out.require = entry.require
+    }
+
+    const def =
+      defaultKind === 'import'
+        ? (entry.import ?? entry.require)
+        : (entry.require ?? entry.import)
+
+    if (def) {
+      out.default = def
+    }
+
+    if (Object.keys(out).length) {
+      exportsMap[subpath] = out
+    }
+  }
+
+  if (!exportsMap['.'] && baseMap.size) {
+    const [subpath, entry] = subpathMap.entries().next().value ?? []
+
+    if (entry) {
+      const out = {}
+
+      if (entry.types) {
+        out.types = entry.types
+      }
+      if (entry.import) {
+        out.import = entry.import
+      }
+      if (entry.require) {
+        out.require = entry.require
+      }
+
+      const def =
+        defaultKind === 'import'
+          ? (entry.import ?? entry.require)
+          : (entry.require ?? entry.import)
+
+      if (def) {
+        out.default = def
+      }
+
+      if (Object.keys(out).length) {
+        exportsMap['.'] = out
+        exportsMap[subpath] ??= out
+      }
+    }
+  }
+
+  if (Object.keys(exportsMap).length) {
+    const pkgJson = {
+      ...pkg.packageJson,
+      exports: exportsMap,
+    }
+
+    await writeFile(pkg.path, `${JSON.stringify(pkgJson, null, 2)}\n`)
+  }
+}
 const duel = async args => {
   const ctx = await init(args)
 
   if (ctx) {
-    const { projectDir, tsconfig, configPath, modules, dirs, pkg } = ctx
+    const {
+      projectDir,
+      tsconfig,
+      configPath,
+      modules,
+      dirs,
+      pkg,
+      exports: exportsOpt,
+    } = ctx
     const tsc = await findUp(
       async dir => {
         const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
@@ -53,6 +265,8 @@ const duel = async args => {
       })
     }
     const pkgDir = dirname(pkg.path)
+    const mainPath = pkg.packageJson.main
+    const mainDefaultKind = mainPath?.endsWith('.cjs') ? 'require' : 'import'
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
     const absoluteOutDir = resolve(projectDir, outDir)
     const originalType = pkg.packageJson.type ?? 'commonjs'
@@ -247,6 +461,21 @@ const duel = async args => {
           )
 
           await updateSpecifiersAndFileExtensions(primaryFiles, 'commonjs', '.cjs')
+        }
+
+        if (exportsOpt) {
+          const esmRoot = isCjsBuild ? primaryOutDir : absoluteDualOutDir
+          const cjsRoot = isCjsBuild ? absoluteDualOutDir : primaryOutDir
+
+          await generateExports({
+            mode: exportsOpt,
+            pkg,
+            pkgDir,
+            esmRoot,
+            cjsRoot,
+            mainDefaultKind,
+            mainPath,
+          })
         }
         logSuccess(startTime)
       }

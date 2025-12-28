@@ -98,6 +98,10 @@ The available options are limited, because you should define most of them inside
 - `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.
 - `--modules, -m` Transform module globals for dual build target. Defaults to false.
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
+- `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
+
+> [!NOTE]
+> Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
 
 You can run `duel --help` to get the same info. Below is the output of that:
 
@@ -131,3 +135,5 @@ Fortunately, Node.js has added `--experimental-require-module` so that you can [
 ## Documentation
 
 - [docs/faq.md](docs/faq.md)
+- [docs/exports.md](docs/exports.md)
+- [docs/migrate-v2-v3.md](docs/migrate-v2-v3.md)
