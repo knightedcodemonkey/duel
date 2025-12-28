@@ -87,7 +87,7 @@ const init = async args => {
       bare,
     )
     log(
-      '--exports, -e \t Generate package.json exports. Values: wildcard | dir | name.',
+      '--exports, -e \t\t Generate package.json exports. Values: wildcard | dir | name.',
       'info',
       bare,
     )
