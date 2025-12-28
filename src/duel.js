@@ -324,6 +324,7 @@ const duel = async args => {
         const writeOptions = {
           target,
           rewriteSpecifier,
+          transformSyntax: 'globals-only',
           ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
         }
 
@@ -405,7 +406,7 @@ const duel = async args => {
           await transform(file, {
             out: file,
             target: isCjsBuild ? 'commonjs' : 'module',
-            transformSyntax: false,
+            transformSyntax: 'globals-only',
           })
         }
       }

@@ -310,8 +310,45 @@ describe('duel', () => {
     })
     await duel(['-p', plain, '-k', plain])
 
-    assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
+    const logs = spy.mock.calls.map(call => call.arguments[0] ?? '')
+    const normalize = str => str.replace(/\r\n/g, '\n')
+    const indexEsm = normalize(await readFile(resolve(plainDist, 'index.js'), 'utf8'))
+    const indexCjs = normalize(
+      await readFile(resolve(plainDist, 'cjs/index.cjs'), 'utf8'),
+    )
+
+    assert.match(logs[0], /^Starting primary build/)
+    assert.match(logs[1], /^Starting dual build/)
+    assert.match(logs[2], /^Successfully created a dual CJS build in \d+ms\./)
+    assert.equal(
+      indexEsm,
+      [
+        "import { enforce } from './enforce.js';",
+        'export const plugin = () => {',
+        '    return {',
+        "        name: 'plugin',",
+        '        enforce',
+        '    };',
+        '};',
+        '',
+      ].join('\n'),
+    )
+    assert.equal(
+      indexCjs,
+      [
+        '"use strict";',
+        'Object.defineProperty(exports, "__esModule", { value: true });',
+        'exports.plugin = void 0;',
+        'const enforce_js_1 = require("./enforce.cjs");',
+        'const plugin = () => {',
+        '    return {',
+        "        name: 'plugin',",
+        '        enforce: enforce_js_1.enforce',
+        '    };',
+        '};',
+        'exports.plugin = plugin;',
+        '',
+      ].join('\n'),
     )
   })
 
