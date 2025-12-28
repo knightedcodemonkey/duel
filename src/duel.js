@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import { join, dirname, resolve, relative, posix, parse as parsePath } from 'node:path'
+import { join, dirname, resolve, relative, parse as parsePath } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -71,8 +71,8 @@ const generateExports = async options => {
   }
 
   const recordPath = (kind, filePath, root) => {
-    const relPkg = toPosix(posix.relative(pkgDir, filePath))
-    const relFromRoot = toPosix(posix.relative(root, filePath))
+    const relPkg = toPosix(relative(pkgDir, filePath))
+    const relFromRoot = toPosix(relative(root, filePath))
     const withDot = ensureDotSlash(relPkg)
     const baseKey = stripKnownExt(relPkg)
     const baseEntry = baseMap.get(baseKey) ?? {}
