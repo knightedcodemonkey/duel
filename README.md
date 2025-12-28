@@ -90,6 +90,10 @@ Note, there is a slight performance penalty since your project needs to be copie
 
 This feature is still a work in progress regarding transforming `exports` when targeting an ES module build (relies on [`@knighted/module`](https://github.com/knightedcodemonkey/module)).
 
+#### Pre-`tsc` transform (TypeScript 58658)
+
+When you pass `--modules`, `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: `--modules` is the pre-`tsc` mitigation.
+
 ## Options
 
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
@@ -122,7 +126,7 @@ These are definitely edge cases, and would only really come up if your project m
 
 - This is going to work best if your CJS-first project uses file extensions in _relative_ specifiers. This is completely acceptable in CJS projects, and [required in ESM projects](https://nodejs.org/api/esm.html#import-specifiers). This package makes no attempt to rewrite bare specifiers, or remap any relative specifiers to a directory index.
 
-- Unfortunately, `tsc` doesn't support [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) completely. One instance of unexpected behavior is when the compiler throws errors for ES module globals when running a dual CJS build, but not for the inverse case, despite both causing runtime errors in Node.js. See the [open issue](https://github.com/microsoft/TypeScript/issues/58658). You can circumvent this with `duel` by using the `--modules` option if your project uses module globals such as `import.meta` properties or `__dirname`, `__filename`, etc. in a CommonJS project.
+- Unfortunately, `tsc` doesn't support [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) completely. For mitigation details, see the pre-`tsc` transform note above (`--modules`).
 
 - If running `duel` with your project's package.json file open in your editor, you may temporarily see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
 
