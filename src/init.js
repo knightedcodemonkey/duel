@@ -58,20 +58,35 @@ const init = async args => {
   }
 
   if (parsed.help) {
-    log('Usage: duel [options]\n')
-    log('Options:')
+    const bare = { bare: true }
+    log('Usage: duel [options]\n', 'info', bare)
+    log('Options:', 'info', bare)
     log(
       "--project, -p [path] \t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+      'info',
+      bare,
     )
     log(
       '--pkg-dir, -k [path] \t The directory to start looking for a package.json file. Defaults to --project directory.',
+      'info',
+      bare,
     )
     log(
       '--modules, -m \t\t Transform module globals for dual build target. Defaults to false.',
+      'info',
+      bare,
     )
-    log('--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].')
-    log('--exports, -e \t Generate package.json exports. Values: wildcard | dir | name.')
-    log('--help, -h \t\t Print this message.')
+    log(
+      '--dirs, -d \t\t Output both builds to directories inside of outDir. [esm, cjs].',
+      'info',
+      bare,
+    )
+    log(
+      '--exports, -e \t Generate package.json exports. Values: wildcard | dir | name.',
+      'info',
+      bare,
+    )
+    log('--help, -h \t\t Print this message.', 'info', bare)
   } else {
     const {
       project,

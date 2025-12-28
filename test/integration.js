@@ -28,6 +28,16 @@ const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
 }
 const shell = platform === 'win32'
+// eslint-disable-next-line no-control-regex
+const ansiRegex = /\u001b\[[0-9;]*m/g
+const stripBadge = str => str.replace(/^\[[^\]]+\]\s*/, '')
+const stripAnsi = str => (typeof str === 'string' ? str.replace(ansiRegex, '') : '')
+const logged = (spy, index) => {
+  const call = spy.mock.calls[index] ?? { arguments: [] }
+  const strings = call.arguments.filter(arg => typeof arg === 'string')
+
+  return stripBadge(stripAnsi(strings.at(-1) ?? ''))
+}
 
 describe('duel', () => {
   before(async () => {
@@ -43,14 +53,14 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--help'])
-    assert.ok(spy.mock.calls[1].arguments[0].startsWith('Options:'))
+    assert.ok(logged(spy, 1).startsWith('Options:'))
   })
 
   it('reports errors when passing invalid options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--invalid'])
-    assert.equal(spy.mock.calls[0].arguments[1], "Unknown option '--invalid'")
+    assert.equal(logged(spy, 0), "Unknown option '--invalid'")
   })
 
   it('uses default --project value of "tsconfig.json"', async t => {
@@ -60,7 +70,7 @@ describe('duel', () => {
 
     await rename(tsConfigPath, tsConfigPathTemp)
     await duel()
-    assert.ok(spy.mock.calls[0].arguments[1].endsWith('is not a file or directory.'))
+    assert.ok(logged(spy, 0).endsWith('is not a file or directory.'))
     await rename(tsConfigPathTemp, tsConfigPath)
   })
 
@@ -68,16 +78,14 @@ describe('duel', () => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['-p', 'test/__fixtures__'])
-    assert.ok(spy.mock.calls[0].arguments[1].endsWith('no tsconfig.json.'))
+    assert.ok(logged(spy, 0).endsWith('no tsconfig.json.'))
   })
 
   it('reports errors when using deprecated --target-extension', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['-x', '.mjs'])
-    assert.ok(
-      spy.mock.calls[0].arguments[1].startsWith('--target-extension is deprecated'),
-    )
+    assert.ok(logged(spy, 0).startsWith('--target-extension is deprecated'))
   })
 
   it('creates a dual CJS build while transforming module globals', async t => {
@@ -89,9 +97,7 @@ describe('duel', () => {
     await duel(['--project', 'test/__fixtures__/esmProject', '-m'])
 
     // Third call because of logging for starting each build.
-    assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
-    )
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual CJS build'))
     // Check that the expected files and extensions are there
     assert.ok(existsSync(resolve(esmDist, 'index.js')))
     assert.ok(existsSync(resolve(esmDist, 'index.d.ts')))
@@ -136,9 +142,7 @@ describe('duel', () => {
     })
     await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-m'])
 
-    assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual ESM build'),
-    )
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual ESM build'))
     assert.ok(existsSync(resolve(cjsDist, 'index.js')))
     assert.ok(existsSync(resolve(cjsDist, 'index.d.ts')))
     assert.ok(existsSync(resolve(cjsDist, 'esm.mjs')))
@@ -182,10 +186,8 @@ describe('duel', () => {
     await duel(['-p', 'test/__fixtures__/project/tsconfig.json', '-d'])
 
     // tsconfig.json omits outDir, so it should be set to the default value of "dist"
-    assert.ok(spy.mock.calls[0].arguments[0].startsWith('No outDir defined'))
-    assert.ok(
-      spy.mock.calls[3].arguments[0].startsWith('Successfully created a dual CJS build'),
-    )
+    assert.ok(logged(spy, 0).startsWith('No outDir defined'))
+    assert.ok(logged(spy, 3).startsWith('Successfully created a dual CJS build'))
     assert.ok(existsSync(resolve(proDist, 'esm/index.js')))
     assert.ok(existsSync(resolve(proDist, 'cjs/index.cjs')))
   })
@@ -199,10 +201,8 @@ describe('duel', () => {
 
     await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-d'])
 
-    assert.ok(spy.mock.calls[0].arguments[0].startsWith('Starting primary build'))
-    assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual ESM build'),
-    )
+    assert.ok(logged(spy, 0).startsWith('Starting primary build'))
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual ESM build'))
     assert.ok(existsSync(resolve(cjsDist, 'cjs/index.cjs')))
     assert.ok(existsSync(resolve(cjsDist, 'cjs/index.d.cts')))
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.js')))
@@ -310,7 +310,7 @@ describe('duel', () => {
     })
     await duel(['-p', plain, '-k', plain])
 
-    const logs = spy.mock.calls.map(call => call.arguments[0] ?? '')
+    const logs = spy.mock.calls.map((_, i) => logged(spy, i))
     const normalize = str => str.replace(/\r\n/g, '\n')
     const indexEsm = normalize(await readFile(resolve(plainDist, 'index.js'), 'utf8'))
     const indexCjs = normalize(
@@ -378,7 +378,7 @@ describe('duel', () => {
     )
 
     assert.ok(spyExit.mock.calls[0].arguments > 0)
-    assert.equal(spy.mock.calls[1].arguments[1], 'Compilation errors found.')
+    assert.equal(logged(spy, 1), 'Compilation errors found.')
   })
 
   /**
@@ -405,8 +405,8 @@ describe('duel', () => {
     )
 
     assert.ok(spyExit.mock.calls[0].arguments > 0)
-    assert.ok(spy.mock.calls[1].arguments[0].includes('Starting dual build...'))
-    assert.equal(spy.mock.calls[2].arguments[1], 'Compilation errors found.')
+    assert.ok(logged(spy, 1).includes('Starting dual build...'))
+    assert.equal(logged(spy, 2), 'Compilation errors found.')
   })
 
   it('reports an error when no package.json file found', async t => {
@@ -416,7 +416,7 @@ describe('duel', () => {
       await rmDist(esmDist)
     })
     await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.json', '--pkg-dir', '/'])
-    assert.equal(spy.mock.calls[0].arguments[1], 'No package.json file found.')
+    assert.equal(logged(spy, 0), 'No package.json file found.')
   })
 
   it('supports extended configs', async t => {
@@ -427,10 +427,8 @@ describe('duel', () => {
     })
     await duel(['-p', join(extended, 'src')])
 
-    assert.ok(!spy.mock.calls[0].arguments[0].startsWith('No outDir defined'))
-    assert.ok(
-      spy.mock.calls[2].arguments[0].startsWith('Successfully created a dual CJS build'),
-    )
+    assert.ok(!logged(spy, 0).startsWith('No outDir defined'))
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual CJS build'))
 
     // Check for runtime errors against Node.js
     const { status: statusEsm } = spawnSync(

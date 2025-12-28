@@ -12,7 +12,13 @@ import { findUp } from 'find-up'
 import { transform } from '@knighted/module'
 
 import { init } from './init.js'
-import { getRealPathAsFileUrl, getCompileFiles, logError, log } from './util.js'
+import {
+  getRealPathAsFileUrl,
+  getCompileFiles,
+  log,
+  logError,
+  logSuccess as logSuccessBadge,
+} from './util.js'
 
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
@@ -336,7 +342,7 @@ const duel = async args => {
       }
     }
     const logSuccess = start => {
-      log(
+      logSuccessBadge(
         `Successfully created a dual ${isCjsBuild ? 'CJS' : 'ESM'} build in ${Math.round(
           performance.now() - start,
         )}ms.`,
