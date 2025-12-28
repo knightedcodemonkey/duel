@@ -2,17 +2,14 @@
 
 ## Phase 1 (current)
 
-- Keep defaults unchanged: no flag → no pre-`tsc` transform; `--modules` → globals-only lowering; `--modules --transform-syntax` → full lowering.
-- Make `--transform-syntax` imply `--modules` (shorthand for `--modules --transform-syntax`).
-- Document the behavior and keep all flags available.
+- Defaults unchanged: no flag → no pre-`tsc` transform; `--modules` → globals-only lowering; `--modules --transform-syntax` → full lowering.
+- `--transform-syntax` implies `--modules` (shorthand for `--modules --transform-syntax`).
+- `--mode` (`none` | `globals` | `full`) is available as a single-switch UX; legacy flags remain supported.
+- Documentation and tests cover the new flows; behavior is backward compatible.
 
 ## Phase 2 (planned, non-breaking)
 
-- Introduce `--mode` (`none` | `globals` | `full`) as the primary UX.
-  - `none`: no module transform.
-  - `globals`: module transform with globals-only lowering (equivalent to `--modules`).
-  - `full`: module transform with full syntax lowering (equivalent to `--modules --transform-syntax`).
-- Keep `--modules` and `--transform-syntax` as supported aliases; note that `--transform-syntax` implies `--modules`.
+- Optionally emit a soft note when legacy flags are used (no change to behavior).
 
 ## Phase 3 (future/major)
 
