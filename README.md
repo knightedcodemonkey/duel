@@ -73,8 +73,6 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 
 TypeScript will throw compiler errors when using `import.meta` globals while targeting a CommonJS dual build, but _will not_ throw compiler errors when the inverse is true, i.e. using CommonJS globals (`__filename`, `__dirname`, etc.) while targeting an ES module dual build. There is an [open issue](https://github.com/microsoft/TypeScript/issues/58658) regarding this asymmetry. Prefer the single-switch `--mode` interface: `--mode globals` (equivalent to `--modules`) or `--mode full` (equivalent to `--modules --transform-syntax`) to have the [ESM vs CJS differences](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs) transformed by `duel` prior to running `tsc` so you avoid compilation or runtime errors. The legacy `--modules`/`--transform-syntax` flags remain supported.
 
-By default, `--modules` only lowers module globals (`transformSyntax: "globals-only"`). Add `--transform-syntax` (or `-s`) alongside `--modules` to opt into full syntax lowering via [`@knighted/module`](https://github.com/knightedcodemonkey/module) for edge cases that need deeper rewrites. `--transform-syntax` automatically enables `--modules`; prefer `--mode full` for the single-flag shorthand.
-
 `duel` infers the primary vs dual build orientation from your `package.json` `type`:
 
 - `"type": "module"` → primary ESM, dual CJS
@@ -112,7 +110,7 @@ Using the single switch:
 
 #### Pre-`tsc` transform (TypeScript 58658)
 
-When you pass `--modules`, `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: `--modules` is the pre-`tsc` mitigation. If you also pass `--transform-syntax`, that pre-`tsc` step performs full lowering instead of globals-only.
+When you enable module transforms (`--mode globals`, `--mode full`, or `--modules`), `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: module transforms are the pre-`tsc` mitigation. If you also select full lowering (`--mode full` or `--transform-syntax`), that pre-`tsc` step performs full lowering instead of globals-only.
 
 ## Options
 
