@@ -352,6 +352,68 @@ describe('duel', () => {
     )
   })
 
+  it('supports full syntax transforms when requested', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(plainDist)
+    })
+
+    await duel(['-p', plain, '-k', plain, '-s'])
+
+    const logs = spy.mock.calls.map((_, i) => logged(spy, i))
+
+    assert.match(logs[0], /^Starting primary build/)
+    assert.match(logs[1], /^Starting dual build/)
+    assert.match(logs[2], /^Successfully created a dual CJS build in \d+ms\./)
+    assert.ok(existsSync(resolve(plainDist, 'index.js')))
+    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+
+    const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
+      shell,
+      stdio: 'inherit',
+    })
+    const { status: statusCjs } = spawnSync('node', [join(plainDist, 'cjs/index.cjs')], {
+      shell,
+      stdio: 'inherit',
+    })
+
+    assert.equal(statusEsm, 0)
+    assert.equal(statusCjs, 0)
+  })
+
+  it('enables module transforms when only --transform-syntax is set', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(errDistDual)
+    })
+
+    await duel(['-p', dualError, '-s'])
+
+    assert.match(logged(spy, 0), /^Starting primary build/)
+    assert.match(logged(spy, 1), /^Starting dual build/)
+    assert.match(logged(spy, 2), /^Successfully created a dual CJS build/)
+    assert.ok(existsSync(resolve(errDistDual, 'index.js')))
+    assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
+
+    const { status: statusEsm } = spawnSync('node', [join(errDistDual, 'index.js')], {
+      shell,
+      stdio: 'inherit',
+    })
+    const { status: statusCjs } = spawnSync(
+      'node',
+      [join(errDistDual, 'cjs/index.cjs')],
+      {
+        shell,
+        stdio: 'inherit',
+      },
+    )
+
+    assert.equal(statusEsm, 0)
+    assert.equal(statusCjs, 0)
+  })
+
   it('works as a cli script', { skip: shell }, () => {
     const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,
@@ -407,6 +469,70 @@ describe('duel', () => {
     assert.ok(spyExit.mock.calls[0].arguments > 0)
     assert.ok(logged(spy, 1).includes('Starting dual build...'))
     assert.equal(logged(spy, 2), 'Compilation errors found.')
+  })
+
+  it('mitigates import.meta errors when using --modules with optional full syntax lowering', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(errDistDual)
+    })
+
+    await duel(['-p', dualError, '-m', '-s'])
+
+    assert.match(logged(spy, 0), /^Starting primary build/)
+    assert.match(logged(spy, 1), /^Starting dual build/)
+    assert.match(logged(spy, 2), /^Successfully created a dual CJS build/)
+    assert.ok(existsSync(resolve(errDistDual, 'index.js')))
+    assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
+  })
+
+  it('supports --mode globals and --mode full', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(errDistDual)
+    })
+
+    await duel(['-p', dualError, '--mode', 'globals'])
+    assert.match(logged(spy, 0), /^Starting primary build/)
+    assert.match(logged(spy, 1), /^Starting dual build/)
+    assert.match(logged(spy, 2), /^Successfully created a dual CJS build/)
+    assert.ok(existsSync(resolve(errDistDual, 'index.js')))
+    assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
+
+    let statusEsm = spawnSync('node', [join(errDistDual, 'index.js')], {
+      shell,
+      stdio: 'inherit',
+    }).status
+    let statusCjs = spawnSync('node', [join(errDistDual, 'cjs/index.cjs')], {
+      shell,
+      stdio: 'inherit',
+    }).status
+
+    assert.equal(statusEsm, 0)
+    assert.equal(statusCjs, 0)
+
+    await rmDist(errDistDual)
+
+    await duel(['-p', dualError, '--mode', 'full'])
+    assert.match(logged(spy, 3), /^Starting primary build/)
+    assert.match(logged(spy, 4), /^Starting dual build/)
+    assert.match(logged(spy, 5), /^Successfully created a dual CJS build/)
+    assert.ok(existsSync(resolve(errDistDual, 'index.js')))
+    assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
+
+    statusEsm = spawnSync('node', [join(errDistDual, 'index.js')], {
+      shell,
+      stdio: 'inherit',
+    }).status
+    statusCjs = spawnSync('node', [join(errDistDual, 'cjs/index.cjs')], {
+      shell,
+      stdio: 'inherit',
+    }).status
+
+    assert.equal(statusEsm, 0)
+    assert.equal(statusCjs, 0)
   })
 
   it('reports an error when no package.json file found', async t => {

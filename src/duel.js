@@ -240,6 +240,7 @@ const duel = async args => {
       configPath,
       modules,
       dirs,
+      transformSyntax,
       pkg,
       exports: exportsOpt,
     } = ctx
@@ -296,6 +297,8 @@ const duel = async args => {
     const runPrimaryBuild = () => {
       return runBuild(configPath, primaryOutDir)
     }
+    const syntaxMode = transformSyntax ? true : 'globals-only'
+
     const updateSpecifiersAndFileExtensions = async (filenames, target, ext) => {
       for (const filename of filenames) {
         const dts = /(\.d\.ts)$/
@@ -330,7 +333,7 @@ const duel = async args => {
         const writeOptions = {
           target,
           rewriteSpecifier,
-          transformSyntax: 'globals-only',
+          transformSyntax: syntaxMode,
           ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
         }
 
@@ -401,18 +404,14 @@ const duel = async args => {
         )
 
         for (const file of toTransform) {
-          /**
-           * Maybe include the option to transform modules implicitly
-           * (modules: true) so that `exports` are correctly converted
-           * when targeting a CJS dual build. Depends on @knighted/module
-           * supporting he `modules` option.
-           *
-           * @see https://github.com/microsoft/TypeScript/issues/58658
-           */
+          const isTsLike = /\.[cm]?tsx?$/.test(file)
+          const transformSyntaxMode =
+            syntaxMode === true && isTsLike ? 'globals-only' : syntaxMode
+
           await transform(file, {
             out: file,
             target: isCjsBuild ? 'commonjs' : 'module',
-            transformSyntax: 'globals-only',
+            transformSyntax: transformSyntaxMode,
           })
         }
       }

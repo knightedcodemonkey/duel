@@ -71,16 +71,14 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 
 ### Module transforms
 
-TypeScript will throw compiler errors when using `import.meta` globals while targeting a CommonJS dual build, but _will not_ throw compiler errors when the inverse is true, i.e. using CommonJS globals (`__filename`, `__dirname`, etc.) while targeting an ES module dual build. There is an [open issue](https://github.com/microsoft/TypeScript/issues/58658) regarding this unexpected behavior. You can use the `--modules` option to have the [differences between ES modules and CommonJS](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs) transformed by `duel` prior to running compilation with `tsc` so that there are no compilation or runtime errors.
+TypeScript will throw compiler errors when using `import.meta` globals while targeting a CommonJS dual build, but _will not_ throw compiler errors when the inverse is true, i.e. using CommonJS globals (`__filename`, `__dirname`, etc.) while targeting an ES module dual build. There is an [open issue](https://github.com/microsoft/TypeScript/issues/58658) regarding this asymmetry. Prefer the single-switch `--mode` interface: `--mode globals` (equivalent to `--modules`) or `--mode full` (equivalent to `--modules --transform-syntax`) to have the [ESM vs CJS differences](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs) transformed by `duel` prior to running `tsc` so you avoid compilation or runtime errors. The legacy `--modules`/`--transform-syntax` flags remain supported.
 
 `duel` infers the primary vs dual build orientation from your `package.json` `type`:
 
 - `"type": "module"` → primary ESM, dual CJS
 - `"type": "commonjs"` → primary CJS, dual ESM
 
-The `--dirs` flag nests outputs under `outDir/esm` and `outDir/cjs` accordingly.
-
-Note, there is a slight performance penalty since your project needs to be copied first to run the transforms before compiling with `tsc`.
+The `--dirs` flag nests outputs under `outDir/esm` and `outDir/cjs` accordingly. There is a small performance cost because sources are copied to run the transform before `tsc`.
 
 ```json
 "scripts": {
@@ -88,11 +86,31 @@ Note, there is a slight performance penalty since your project needs to be copie
 }
 ```
 
-This feature is still a work in progress regarding transforming `exports` when targeting an ES module build (relies on [`@knighted/module`](https://github.com/knightedcodemonkey/module)).
+For projects that need full syntax lowering, opt in explicitly:
+
+```json
+"scripts": {
+  "build": "duel --modules --transform-syntax"
+}
+```
+
+Using the single switch:
+
+```json
+"scripts": {
+  "build": "duel --mode globals"
+}
+```
+
+```json
+"scripts": {
+  "build": "duel --mode full"
+}
+```
 
 #### Pre-`tsc` transform (TypeScript 58658)
 
-When you pass `--modules`, `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: `--modules` is the pre-`tsc` mitigation.
+When you enable module transforms (`--mode globals`, `--mode full`, or `--modules`), `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: module transforms are the pre-`tsc` mitigation. If you also select full lowering (`--mode full` or `--transform-syntax`), that pre-`tsc` step performs full lowering instead of globals-only.
 
 ## Options
 
@@ -100,25 +118,16 @@ The available options are limited, because you should define most of them inside
 
 - `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
 - `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.
+- `--mode` Optional shorthand for the module transform mode: `none` (default), `globals` (modules + globals-only), `full` (modules + full syntax lowering). Recommended.
 - `--modules, -m` Transform module globals for dual build target. Defaults to false.
+- `--transform-syntax, -s` Opt in to full syntax lowering via `@knighted/module` (default is globals-only). Implies `--modules`.
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
 
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
 
-You can run `duel --help` to get the same info. Below is the output of that:
-
-```console
-Usage: duel [options]
-
-Options:
---project, -p [path] 	 Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.
---pkg-dir, -k [path] 	 The directory to start looking for a package.json file. Defaults to --project directory.
---modules, -m 		 Transform module globals for dual build target. Defaults to false.
---dirs, -d 		 Output both builds to directories inside of outDir. [esm, cjs].
---help, -h 		 Print this message.
-```
+You can run `duel --help` to get the same info.
 
 ## Gotchas
 

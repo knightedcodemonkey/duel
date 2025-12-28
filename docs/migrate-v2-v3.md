@@ -8,6 +8,7 @@
   - `"type": "commonjs"` → primary CJS, dual ESM.
   - If `type` was absent in v2, set it explicitly to avoid flipped outputs.
 - **Specifier rewrites:** Uses `@knighted/module` (no `@knighted/specifier`).
+- **Transform flags quality-of-life:** `--transform-syntax` now implies `--modules`, and a new `--mode` flag provides a shorthand (`none | globals | full`). Defaults are unchanged.
 
 ## What stayed the same
 
@@ -22,4 +23,13 @@
 3. **Upgrade dependency** to `@knighted/duel@^3.0.0`.
 4. If you had custom postinstall patches for `@knighted/module` imports, remove them (v3+ ships correct `imports`).
 
-That’s it—no config rewrites should be needed beyond `type` and Node version.
+## New convenience flags (v3.x)
+
+- `--transform-syntax` (full lowering) now automatically enables `--modules` so you don't have to pass both.
+- `--mode` offers a single switch:
+  - `none`: no pre-`tsc` module transform (default)
+  - `globals`: equivalent to `--modules` (globals-only lowering)
+  - `full`: equivalent to `--modules --transform-syntax`
+    The legacy flags remain supported and documented.
+
+That's it—no config rewrites should be needed beyond `type` and Node version.
