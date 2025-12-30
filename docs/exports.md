@@ -2,6 +2,10 @@
 
 This guide shows a simple before/after flow when using `duel --exports` to emit `package.json` exports.
 
+> [!TIP]
+> **Convention over Configuration**
+> The `--exports` option is designed to be zero-config. It determines your public API by scanning your build output and applying standard Node.js patterns. It assumes that your directory structure reflects your intended module boundaries. If you need to hide specific files or create complex custom mappings, you should manage the exports field manually; `duel` is built to handle the 90% of use cases that follow standard project layouts without requiring a separate configuration file.
+
 ## Scenario
 
 - `package.json` has `"type": "module"` and no `exports` field.
@@ -31,6 +35,9 @@ Example layout (source tree):
 ## After: `duel --exports name`
 
 Keys stay extensionless; targets keep explicit extensions. Values are concrete (no wildcards) because each file gets its own subpath. The subpath key is derived from the file name (via `path.parse().name`), not its directory path.
+
+> [!WARNING]
+> If two files share the same basename (e.g., `foo.ts` in different folders), they collide on that subpath: the later file discovered by the glob pass overwrites the earlier one.
 
 ```json
 {
@@ -144,3 +151,4 @@ Wildcard keys use the first path segment and cover folders; values are wildcarde
 - For `dir`/`wildcard`, both keys and values use wildcards (`./dir/*` -> `./dist/dir/*.js` etc.).
 - The root `.` entry uses your `main` (if set) to pick the default orientation (import vs require) and mirrors both builds when present.
 - If `main` is absent and no non-wildcard subpath exists, `.` is not promoted.
+- Windows paths are normalized with `path.posix`.
