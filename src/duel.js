@@ -286,6 +286,11 @@ const duel = async args => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
         const build = spawn(tsc, args, { stdio: 'inherit', shell: false })
 
+        build.on('error', err => {
+          logError(`Failed to start tsc at ${tsc}: ${err.message}`)
+          reject(err)
+        })
+
         build.on('exit', code => {
           if (code > 0) {
             return reject(new Error(code))
