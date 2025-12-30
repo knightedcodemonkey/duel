@@ -8,6 +8,14 @@ This guide shows a simple before/after flow when using `duel --exports` to emit 
 - `tsconfig.json` uses `outDir: "dist"`.
 - Running `duel` produces ESM in `dist` and CJS in `dist/cjs`.
 
+Example layout (source tree):
+
+- `src/index.ts`
+- `src/components/button.ts`
+- `src/components/card.ts`
+- `src/utils/math/add.ts`
+- `src/utils/math/subtract.ts`
+
 ## Before
 
 ```json
@@ -22,7 +30,7 @@ This guide shows a simple before/after flow when using `duel --exports` to emit 
 
 ## After: `duel --exports name`
 
-Keys stay extensionless; targets keep explicit extensions. Values are concrete (no wildcards) because each file gets its own subpath.
+Keys stay extensionless; targets keep explicit extensions. Values are concrete (no wildcards) because each file gets its own subpath. The subpath key is derived from the file name (via `path.parse().name`), not its directory path.
 
 ```json
 {
@@ -44,11 +52,29 @@ Keys stay extensionless; targets keep explicit extensions. Values are concrete (
       "require": "./dist/cjs/index.cjs",
       "default": "./dist/index.js"
     },
-    "./utils": {
-      "types": "./dist/utils.d.ts",
-      "import": "./dist/utils.js",
-      "require": "./dist/cjs/utils.cjs",
-      "default": "./dist/utils.js"
+    "./button": {
+      "types": "./dist/components/button.d.ts",
+      "import": "./dist/components/button.js",
+      "require": "./dist/cjs/components/button.cjs",
+      "default": "./dist/components/button.js"
+    },
+    "./card": {
+      "types": "./dist/components/card.d.ts",
+      "import": "./dist/components/card.js",
+      "require": "./dist/cjs/components/card.cjs",
+      "default": "./dist/components/card.js"
+    },
+    "./add": {
+      "types": "./dist/utils/math/add.d.ts",
+      "import": "./dist/utils/math/add.js",
+      "require": "./dist/cjs/utils/math/add.cjs",
+      "default": "./dist/utils/math/add.js"
+    },
+    "./subtract": {
+      "types": "./dist/utils/math/subtract.d.ts",
+      "import": "./dist/utils/math/subtract.js",
+      "require": "./dist/cjs/utils/math/subtract.cjs",
+      "default": "./dist/utils/math/subtract.js"
     }
   }
 }
@@ -67,11 +93,17 @@ Directory-based keys are emitted with a trailing `/*`; values are wildcarded to 
       "require": "./dist/cjs/index.cjs",
       "default": "./dist/index.js"
     },
-    "./utils/*": {
-      "types": "./dist/utils/*.d.ts",
-      "import": "./dist/utils/*.js",
-      "require": "./dist/cjs/utils/*.cjs",
-      "default": "./dist/utils/*.js"
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js",
+      "require": "./dist/cjs/components/*.cjs",
+      "default": "./dist/components/*.js"
+    },
+    "./math/*": {
+      "types": "./dist/utils/math/*.d.ts",
+      "import": "./dist/utils/math/*.js",
+      "require": "./dist/cjs/utils/math/*.cjs",
+      "default": "./dist/utils/math/*.js"
     }
   }
 }
@@ -79,7 +111,7 @@ Directory-based keys are emitted with a trailing `/*`; values are wildcarded to 
 
 ## After: `duel --exports wildcard`
 
-Wildcard keys use the first path segment and cover folders; values are wildcarded to match all files in that segment.
+Wildcard keys use the first path segment and cover folders; values are wildcarded to match all files in that segment. With the same layout as above, keys group by the **first** directory (`components`, `utils`) instead of the deepest one.
 
 ```json
 {
@@ -89,6 +121,12 @@ Wildcard keys use the first path segment and cover folders; values are wildcarde
       "import": "./dist/index.js",
       "require": "./dist/cjs/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js",
+      "require": "./dist/cjs/components/*.cjs",
+      "default": "./dist/components/*.js"
     },
     "./utils/*": {
       "types": "./dist/utils/*.d.ts",
