@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import { rm, readFile, rename, writeFile } from 'node:fs/promises'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { spawnSync, execSync } from 'node:child_process'
-import { platform } from 'node:process'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
 import { duel } from '../src/duel.js'
@@ -30,7 +29,6 @@ const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
 }
-const shell = platform === 'win32'
 // eslint-disable-next-line no-control-regex
 const ansiRegex = /\u001b\[[0-9;]*m/g
 const stripBadge = str => str.replace(/^\[[^\]]+\]\s*/, '')
@@ -44,7 +42,6 @@ const runScript = (script, { cwd } = {}) => {
     writeFileSync(scriptPath, script)
 
     const res = spawnSync(process.execPath, [scriptPath], {
-      shell: false,
       cwd,
     })
 
@@ -154,13 +151,13 @@ describe('duel', () => {
     const { status: statusEsm } = spawnSync(
       'node',
       ['test/__fixtures__/esmProject/dist/index.js'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
     const { status: statusCjs } = spawnSync(
       'node',
       ['test/__fixtures__/esmProject/dist/cjs/index.cjs'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusCjs, 0)
   })
@@ -197,13 +194,13 @@ describe('duel', () => {
     const { status: statusCjs } = spawnSync(
       'node',
       ['test/__fixtures__/cjsProject/dist/index.js'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusCjs, 0)
     const { status: statusEsm } = spawnSync(
       'node',
       ['test/__fixtures__/cjsProject/dist/esm/index.mjs'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
   })
@@ -531,11 +528,9 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
 
     const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
-      shell,
       stdio: 'inherit',
     })
     const { status: statusCjs } = spawnSync('node', [join(plainDist, 'cjs/index.cjs')], {
-      shell,
       stdio: 'inherit',
     })
 
@@ -559,14 +554,12 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
 
     const { status: statusEsm } = spawnSync('node', [join(errDistDual, 'index.js')], {
-      shell,
       stdio: 'inherit',
     })
     const { status: statusCjs } = spawnSync(
       'node',
       [join(errDistDual, 'cjs/index.cjs')],
       {
-        shell,
         stdio: 'inherit',
       },
     )
@@ -575,12 +568,13 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
   })
 
-  it('works as a cli script', { skip: shell }, () => {
-    const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
-      shell,
-    })
+  it('works as a cli script', () => {
+    const { stdout } = spawnSync(process.execPath, [
+      resolve(__dirname, '..', 'src', 'duel.js'),
+      '-h',
+    ])
 
-    assert.ok(resp.toString().indexOf('Options:') > -1)
+    assert.ok(stdout.toString().indexOf('Options:') > -1)
   })
 
   it('reports compilation errors during a build', async t => {
@@ -663,11 +657,9 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
 
     let statusEsm = spawnSync('node', [join(errDistDual, 'index.js')], {
-      shell,
       stdio: 'inherit',
     }).status
     let statusCjs = spawnSync('node', [join(errDistDual, 'cjs/index.cjs')], {
-      shell,
       stdio: 'inherit',
     }).status
 
@@ -684,11 +676,9 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(errDistDual, 'cjs/index.cjs')))
 
     statusEsm = spawnSync('node', [join(errDistDual, 'index.js')], {
-      shell,
       stdio: 'inherit',
     }).status
     statusCjs = spawnSync('node', [join(errDistDual, 'cjs/index.cjs')], {
-      shell,
       stdio: 'inherit',
     }).status
 
@@ -721,13 +711,13 @@ describe('duel', () => {
     const { status: statusEsm } = spawnSync(
       'node',
       ['test/__fixtures__/extended/dist/file.js'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusEsm, 0)
     const { status: statusCjs } = spawnSync(
       'node',
       ['test/__fixtures__/extended/dist/cjs/file.cjs'],
-      { shell, stdio: 'inherit' },
+      { stdio: 'inherit' },
     )
     assert.equal(statusCjs, 0)
   })

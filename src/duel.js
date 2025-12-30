@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { argv, platform } from 'node:process'
+import { argv } from 'node:process'
 import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
@@ -23,7 +23,6 @@ import {
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
 }
-
 const ensureDotSlash = path => {
   return path.startsWith('./') ? path : `./${path}`
 }
@@ -50,7 +49,8 @@ const getSubpath = (mode, relFromRoot) => {
 }
 
 const handleErrorAndExit = message => {
-  const exitCode = Number(message)
+  const parsed = parseInt(message, 10)
+  const exitCode = Number.isNaN(parsed) ? 1 : parsed
 
   logError('Compilation errors found.')
   process.exit(exitCode)
@@ -265,21 +265,24 @@ const duel = async args => {
     } = ctx
     const tsc = await findUp(
       async dir => {
-        const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
+        const candidate = join(dir, 'node_modules', 'typescript', 'bin', 'tsc')
 
         try {
-          await access(tscBin)
-          return tscBin
+          await access(candidate)
+          return resolve(candidate)
         } catch {
           /* continue */
         }
       },
       { cwd: projectDir },
     )
+
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
-        const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tsc, args, { stdio: 'inherit', shell: platform === 'win32' })
+        const args = outDir
+          ? [tsc, '-p', project, '--outDir', outDir]
+          : [tsc, '-p', project]
+        const build = spawn(process.execPath, args, { stdio: 'inherit' })
 
         build.on('exit', code => {
           if (code > 0) {
