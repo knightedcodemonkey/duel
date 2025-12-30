@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { argv, platform } from 'node:process'
+import { argv } from 'node:process'
 import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
@@ -23,8 +23,6 @@ import {
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
 }
-const isWin = platform === 'win32'
-
 const ensureDotSlash = path => {
   return path.startsWith('./') ? path : `./${path}`
 }
@@ -267,34 +265,32 @@ const duel = async args => {
     } = ctx
     const tsc = await findUp(
       async dir => {
-        const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
-        const candidates = isWin ? [`${tscBin}.cmd`, `${tscBin}.ps1`, tscBin] : [tscBin]
+        const candidate = join(dir, 'node_modules', 'typescript', 'bin', 'tsc')
 
-        for (const candidate of candidates) {
-          try {
-            await access(candidate)
-            return resolve(candidate)
-          } catch {
-            /* continue */
-          }
+        try {
+          await access(candidate)
+          return resolve(candidate)
+        } catch {
+          /* continue */
         }
       },
       { cwd: projectDir },
     )
-    const tscPath = tsc ? resolve(tsc) : null
 
-    if (!tscPath) {
-      logError('TypeScript compiler not found (expected node_modules/.bin/tsc)')
+    if (!tsc) {
+      logError('TypeScript compiler not found (expected node_modules/typescript/bin/tsc)')
       handleErrorAndExit('1')
     }
 
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
-        const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tscPath, args, { stdio: 'inherit', shell: false })
+        const args = outDir
+          ? [tsc, '-p', project, '--outDir', outDir]
+          : [tsc, '-p', project]
+        const build = spawn(process.execPath, args, { stdio: 'inherit', shell: false })
 
         build.on('error', err => {
-          logError(`Failed to start tsc at ${tscPath}: ${err.message}`)
+          logError(`Failed to start tsc at ${tsc}: ${err.message}`)
           reject(err)
         })
 
