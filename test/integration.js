@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import { rm, readFile, rename, writeFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync, execSync } from 'node:child_process'
 import { platform } from 'node:process'
+import { tmpdir } from 'node:os'
 
 import { duel } from '../src/duel.js'
 
@@ -34,6 +35,18 @@ const shell = platform === 'win32'
 const ansiRegex = /\u001b\[[0-9;]*m/g
 const stripBadge = str => str.replace(/^\[[^\]]+\]\s*/, '')
 const stripAnsi = str => (typeof str === 'string' ? str.replace(ansiRegex, '') : '')
+const runScript = script => {
+  const dir = mkdtempSync(join(tmpdir(), 'duel-resolve-'))
+  const scriptPath = join(dir, 'script.mjs')
+
+  writeFileSync(scriptPath, script)
+
+  const res = spawnSync(process.execPath, [scriptPath], { shell: false })
+
+  rmSync(dir, { recursive: true, force: true })
+
+  return res
+}
 const logged = (spy, index) => {
   const call = spy.mock.calls[index] ?? { arguments: [] }
   const strings = call.arguments.filter(arg => typeof arg === 'string')
@@ -325,9 +338,7 @@ describe('duel', () => {
         console.log([esmRoot.root, cr].join(','));
       `
 
-      return spawnSync('node', ['--input-type=module', '-e', cmd], {
-        shell,
-      })
+      return runScript(cmd)
     }
 
     await duel(['-p', exportsRes, '--exports', 'name'])
@@ -364,9 +375,7 @@ describe('duel', () => {
         console.log([esmA.a, esmB.b, ar, br].join(','));
       `
 
-      return spawnSync('node', ['--input-type=module', '-e', cmd], {
-        shell,
-      })
+      return runScript(cmd)
     }
 
     await duel(['-p', exportsRes, '--exports', 'dir'])
@@ -416,9 +425,7 @@ describe('duel', () => {
         console.log([esmFoo.fooBar, cr].join(','));
       `
 
-      return spawnSync('node', ['--input-type=module', '-e', cmd], {
-        shell,
-      })
+      return runScript(cmd)
     }
 
     const res = runResolve()
