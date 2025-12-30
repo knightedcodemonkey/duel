@@ -90,12 +90,15 @@
     "read-package-up": "^12.0.0"
   },
   "lint-staged": {
+    "ignore": [
+      "test/__fixtures__/projectRefs/node_modules/hoisted/**"
+    ],
     "*.{js,mjs,cjs,ts,cts,mts,jsx,tsx}": [
-      "eslint --max-warnings=0",
-      "prettier --check --ignore-unknown"
+      "eslint --max-warnings=0 --no-warn-ignored",
+      "prettier --check --ignore-unknown --with-node-modules"
     ],
     "*.{md,json,yml,yaml}": [
-      "prettier --check --ignore-unknown"
+      "prettier --check --ignore-unknown --with-node-modules"
     ]
   },
   "prettier": {
