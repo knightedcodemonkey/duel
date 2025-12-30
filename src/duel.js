@@ -23,6 +23,7 @@ import {
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
 }
+const isWin = platform === 'win32'
 
 const ensureDotSlash = path => {
   return path.startsWith('./') ? path : `./${path}`
@@ -266,12 +267,15 @@ const duel = async args => {
     const tsc = await findUp(
       async dir => {
         const tscBin = join(dir, 'node_modules', '.bin', 'tsc')
+        const candidates = isWin ? [`${tscBin}.cmd`, `${tscBin}.ps1`, tscBin] : [tscBin]
 
-        try {
-          await access(tscBin)
-          return tscBin
-        } catch {
-          /* continue */
+        for (const candidate of candidates) {
+          try {
+            await access(candidate)
+            return candidate
+          } catch {
+            /* continue */
+          }
         }
       },
       { cwd: projectDir },
@@ -279,7 +283,7 @@ const duel = async args => {
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
         const args = outDir ? ['-p', project, '--outDir', outDir] : ['-p', project]
-        const build = spawn(tsc, args, { stdio: 'inherit', shell: platform === 'win32' })
+        const build = spawn(tsc, args, { stdio: 'inherit', shell: false })
 
         build.on('exit', code => {
           if (code > 0) {

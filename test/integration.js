@@ -30,8 +30,7 @@ const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
   await rm(distPath, { recursive: true, force: true })
 }
-const isWin = platform === 'win32'
-const shell = false
+const shell = platform === 'win32'
 // eslint-disable-next-line no-control-regex
 const ansiRegex = /\u001b\[[0-9;]*m/g
 const stripBadge = str => str.replace(/^\[[^\]]+\]\s*/, '')
@@ -576,7 +575,7 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
   })
 
-  it('works as a cli script', { skip: isWin }, () => {
+  it('works as a cli script', { skip: shell }, () => {
     const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`, {
       shell,
     })
