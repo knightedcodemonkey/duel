@@ -1,4 +1,41 @@
 {
   "version": "0.0.0",
-  "type": "module"
+  "type": "module",
+  "name": "",
+  "readme": "ERROR: No README data found!",
+  "_id": "@0.0.0",
+  "exports": {
+    "./index": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./esm": {
+      "types": "./dist/esm.d.mts",
+      "import": "./dist/esm.mjs",
+      "default": "./dist/esm.mjs"
+    },
+    "./module": {
+      "types": "./dist/folder/module.d.ts",
+      "import": "./dist/folder/module.js",
+      "require": "./dist/cjs/folder/module.cjs",
+      "default": "./dist/folder/module.js"
+    },
+    "./another": {
+      "types": "./dist/folder/another.d.mts",
+      "import": "./dist/folder/another.mjs",
+      "default": "./dist/folder/another.mjs"
+    },
+    "./cjs": {
+      "require": "./dist/cjs/cjs.cjs",
+      "default": "./dist/cjs/cjs.cjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.cjs",
+      "default": "./dist/index.js"
+    }
+  }
 }

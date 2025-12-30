@@ -22,6 +22,8 @@ const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const extDist = join(extended, 'dist')
+const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
+const exportsResDist = join(exportsRes, 'dist')
 const errDistDual = join(dualError, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
@@ -258,23 +260,16 @@ describe('duel', () => {
     const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
     const exp = updatedPkg.exports
 
-    assert.ok(exp?.['.'])
-    assert.ok(exp?.['./folder'])
+    assert.ok(exp?.['./folder/*'])
 
-    for (const key of Object.keys(exp ?? {}).filter(key => key !== '.')) {
-      assert.ok(!/\.[mc]?js$/i.test(key))
-      assert.ok(!/\.d\.[mc]?ts$/i.test(key))
-    }
-
-    const folder = exp['./folder']
+    const folder = exp['./folder/*']
 
     assert.ok(folder.import || folder.require)
     if (folder.import) {
-      assert.ok(!folder.import.includes('/dist/cjs/'))
-      assert.ok(/\.m?js$/i.test(folder.import))
+      assert.match(folder.import, /\*\.m?js$/)
     }
-    assert.ok(/\.cjs$/i.test(folder.require ?? ''))
-    assert.ok(/\.d\.(ts|mts|cts)$/i.test(folder.types ?? ''))
+    assert.match(folder.require ?? '', /\*\.cjs$/)
+    assert.match(folder.types ?? '', /\*\.d\.(ts|mts|cts)$/)
     assert.equal(folder.default, folder.import ?? folder.require)
   })
 
@@ -292,24 +287,170 @@ describe('duel', () => {
     const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
     const exp = updatedPkg.exports
 
-    assert.ok(exp?.['.'])
     assert.ok(exp?.['./folder/*'])
-
-    for (const key of Object.keys(exp ?? {}).filter(key => key !== '.')) {
-      assert.ok(!/\.[mc]?js$/i.test(key))
-      assert.ok(!/\.d\.[mc]?ts$/i.test(key))
-    }
 
     const folder = exp['./folder/*']
 
     assert.ok(folder.import || folder.require)
     if (folder.import) {
-      assert.ok(!folder.import.includes('/dist/cjs/'))
-      assert.ok(/\.m?js$/i.test(folder.import))
+      assert.match(folder.import, /\*\.m?js$/)
     }
-    assert.ok(/\.cjs$/i.test(folder.require ?? ''))
-    assert.ok(/\.d\.(ts|mts|cts)$/i.test(folder.types ?? ''))
+    assert.match(folder.require ?? '', /\*\.cjs$/)
+    assert.match(folder.types ?? '', /\*\.d\.(ts|mts|cts)$/)
     assert.equal(folder.default, folder.import ?? folder.require)
+  })
+
+  it('resolves name exports via node', async t => {
+    const pkgPath = resolve(exportsRes, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(exportsResDist)
+    })
+
+    await writeFile(pkgPath, originalPkg)
+
+    const runResolve = () => {
+      const cmd = `
+        import { createRequire } from 'node:module';
+        import { pathToFileURL } from 'node:url';
+        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
+        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        const resolveEsm = spec => req.resolve(spec);
+        const esmRoot = await import(resolveEsm('exports-resolution'));
+        const { root: cr } = req('exports-resolution');
+        console.log([esmRoot.root, cr].join(','));
+      `
+
+      return spawnSync('node', ['--input-type=module', '-e', cmd], {
+        shell,
+      })
+    }
+
+    await duel(['-p', exportsRes, '--exports', 'name'])
+    const res = runResolve()
+    assert.equal(res.status, 0)
+    assert.equal(res.stdout.toString().trim(), 'root,root')
+  })
+
+  it('resolves dir and wildcard exports via node', async t => {
+    const pkgPath = resolve(exportsRes, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(exportsResDist)
+    })
+
+    // Ensure starting from clean package.json before duel mutates exports
+    await writeFile(pkgPath, originalPkg)
+
+    const runResolve = () => {
+      const cmd = `
+        import { createRequire } from 'node:module';
+        import { fileURLToPath, pathToFileURL } from 'node:url';
+        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
+        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        const resolveEsm = spec => req.resolve(spec);
+        const esmA = await import(resolveEsm('exports-resolution/utils/a'));
+        const esmB = await import(resolveEsm('exports-resolution/utils/b'));
+        const { a: ar } = req('exports-resolution/utils/a');
+        const { b: br } = req('exports-resolution/utils/b');
+        console.log([esmA.a, esmB.b, ar, br].join(','));
+      `
+
+      return spawnSync('node', ['--input-type=module', '-e', cmd], {
+        shell,
+      })
+    }
+
+    await duel(['-p', exportsRes, '--exports', 'dir'])
+    let res = runResolve()
+    assert.equal(res.status, 0)
+    assert.equal(res.stdout.toString().trim(), 'a,b,a,b')
+
+    await duel(['-p', exportsRes, '--exports', 'wildcard'])
+    res = runResolve()
+    assert.equal(res.status, 0)
+    assert.equal(res.stdout.toString().trim(), 'a,b,a,b')
+  })
+
+  it('wildcard exports handle multi-dot filenames', async t => {
+    const pkgPath = resolve(exportsRes, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(exportsResDist)
+    })
+
+    await writeFile(pkgPath, originalPkg)
+    await duel(['-p', exportsRes, '--exports', 'wildcard'])
+
+    const pkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const folder = pkg.exports?.['./utils/*']
+
+    assert.ok(folder)
+    assert.ok(folder.import?.endsWith('/*.js'))
+    assert.ok(folder.require?.endsWith('/*.cjs'))
+    assert.ok(/\/\*\.d\.(ts|cts|mts)$/.test(folder.types ?? ''))
+    assert.ok(!folder.import?.includes('*.bar.js'))
+    assert.ok(!folder.types?.includes('*.bar.d.'))
+
+    const runResolve = () => {
+      const cmd = `
+        import { createRequire } from 'node:module';
+        import { pathToFileURL } from 'node:url';
+        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
+        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        const resolveEsm = spec => req.resolve(spec);
+        const esmFoo = await import(resolveEsm('exports-resolution/utils/foo.bar'));
+        const { fooBar: cr } = req('exports-resolution/utils/foo.bar');
+        console.log([esmFoo.fooBar, cr].join(','));
+      `
+
+      return spawnSync('node', ['--input-type=module', '-e', cmd], {
+        shell,
+      })
+    }
+
+    const res = runResolve()
+    assert.equal(res.status, 0)
+    assert.equal(res.stdout.toString().trim(), 'foo.bar,foo.bar')
+  })
+
+  it('generates exports with --dirs', async t => {
+    const fixture = resolve(__dirname, '__fixtures__/exportsDirs')
+    const pkgPath = resolve(fixture, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+    const distPath = resolve(fixture, 'dist')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(distPath)
+    })
+
+    await writeFile(pkgPath, originalPkg)
+    await duel(['-p', fixture, '--dirs', '--exports', 'wildcard'])
+
+    const pkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = pkg.exports
+
+    assert.ok(exp?.['.'])
+    assert.equal(exp['.'].import, './dist/esm/index.js')
+    assert.equal(exp['.'].default, './dist/esm/index.js')
+    assert.ok(exp['.'].types?.includes('/dist/esm/index.d.ts'))
+    if (exp['.'].require) {
+      assert.ok(exp['.'].require.endsWith('/dist/cjs/index.cjs'))
+    }
+
+    const folder = exp['./utils/*']
+    assert.ok(folder)
+    assert.ok(folder.import?.endsWith('/dist/esm/utils/*.js'))
+    assert.ok(folder.require?.endsWith('/dist/cjs/utils/*.cjs'))
+    assert.ok(/\/dist\/(cjs|esm)\/utils\/\*\.d\.(ts|cts)$/.test(folder.types ?? ''))
+    assert.equal(folder.default, folder.import)
   })
 
   it('supports import attributes and ts import assertion resolution mode', async t => {
