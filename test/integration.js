@@ -35,17 +35,23 @@ const shell = platform === 'win32'
 const ansiRegex = /\u001b\[[0-9;]*m/g
 const stripBadge = str => str.replace(/^\[[^\]]+\]\s*/, '')
 const stripAnsi = str => (typeof str === 'string' ? str.replace(ansiRegex, '') : '')
-const runScript = script => {
-  const dir = mkdtempSync(join(tmpdir(), 'duel-resolve-'))
+const runScript = (script, { cwd } = {}) => {
+  const baseDir = cwd ?? tmpdir()
+  const dir = mkdtempSync(join(baseDir, 'duel-resolve-'))
   const scriptPath = join(dir, 'script.mjs')
 
-  writeFileSync(scriptPath, script)
+  try {
+    writeFileSync(scriptPath, script)
 
-  const res = spawnSync(process.execPath, [scriptPath], { shell: false })
+    const res = spawnSync(process.execPath, [scriptPath], {
+      shell: false,
+      cwd,
+    })
 
-  rmSync(dir, { recursive: true, force: true })
-
-  return res
+    return res
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 const logged = (spy, index) => {
   const call = spy.mock.calls[index] ?? { arguments: [] }
@@ -327,23 +333,20 @@ describe('duel', () => {
     const runResolve = () => {
       const cmd = `
         import { createRequire } from 'node:module';
-        import { pathToFileURL } from 'node:url';
-        import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
-        const resolveEsm = spec => req.resolve(spec);
-        const esmRoot = await import(resolveEsm('exports-resolution'));
+        process.chdir(pkgRoot);
+        const req = createRequire(import.meta.url);
+        const esmRoot = await import('exports-resolution');
         const { root: cr } = req('exports-resolution');
         console.log([esmRoot.root, cr].join(','));
       `
 
-      return runScript(cmd)
+      return runScript(cmd, { cwd: exportsRes })
     }
 
     await duel(['-p', exportsRes, '--exports', 'name'])
     const res = runResolve()
-    assert.equal(res.status, 0)
+    assert.equal(res.status, 0, res.stderr?.toString() || res.stdout?.toString())
     assert.equal(res.stdout.toString().trim(), 'root,root')
   })
 
@@ -362,30 +365,27 @@ describe('duel', () => {
     const runResolve = () => {
       const cmd = `
         import { createRequire } from 'node:module';
-        import { pathToFileURL } from 'node:url';
-        import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
-        const resolveEsm = spec => req.resolve(spec);
-        const esmA = await import(resolveEsm('exports-resolution/utils/a'));
-        const esmB = await import(resolveEsm('exports-resolution/utils/b'));
+        process.chdir(pkgRoot);
+        const req = createRequire(import.meta.url);
+        const esmA = await import('exports-resolution/utils/a');
+        const esmB = await import('exports-resolution/utils/b');
         const { a: ar } = req('exports-resolution/utils/a');
         const { b: br } = req('exports-resolution/utils/b');
         console.log([esmA.a, esmB.b, ar, br].join(','));
       `
 
-      return runScript(cmd)
+      return runScript(cmd, { cwd: exportsRes })
     }
 
     await duel(['-p', exportsRes, '--exports', 'dir'])
     let res = runResolve()
-    assert.equal(res.status, 0)
+    assert.equal(res.status, 0, res.stderr?.toString() || res.stdout?.toString())
     assert.equal(res.stdout.toString().trim(), 'a,b,a,b')
 
     await duel(['-p', exportsRes, '--exports', 'wildcard'])
     res = runResolve()
-    assert.equal(res.status, 0)
+    assert.equal(res.status, 0, res.stderr?.toString() || res.stdout?.toString())
     assert.equal(res.stdout.toString().trim(), 'a,b,a,b')
   })
 
@@ -414,22 +414,19 @@ describe('duel', () => {
     const runResolve = () => {
       const cmd = `
         import { createRequire } from 'node:module';
-        import { pathToFileURL } from 'node:url';
-        import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
-        const resolveEsm = spec => req.resolve(spec);
-        const esmFoo = await import(resolveEsm('exports-resolution/utils/foo.bar'));
+        process.chdir(pkgRoot);
+        const req = createRequire(import.meta.url);
+        const esmFoo = await import('exports-resolution/utils/foo.bar');
         const { fooBar: cr } = req('exports-resolution/utils/foo.bar');
         console.log([esmFoo.fooBar, cr].join(','));
       `
 
-      return runScript(cmd)
+      return runScript(cmd, { cwd: exportsRes })
     }
 
     const res = runResolve()
-    assert.equal(res.status, 0)
+    assert.equal(res.status, 0, res.stderr?.toString() || res.stdout?.toString())
     assert.equal(res.stdout.toString().trim(), 'foo.bar,foo.bar')
   })
 

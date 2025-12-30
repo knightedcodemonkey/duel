@@ -1,15 +1,7 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import {
-  join,
-  dirname,
-  resolve,
-  relative,
-  parse as parsePath,
-  basename,
-  extname,
-} from 'node:path'
+import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -85,8 +77,8 @@ const generateExports = async options => {
   }
 
   const toWildcardValue = value => {
-    const dir = dirname(value)
-    const file = basename(value)
+    const dir = posix.dirname(value)
+    const file = posix.basename(value)
     const dtsMatch = file.match(/(\.d\.(?:ts|mts|cts))$/i)
 
     if (dtsMatch) {
@@ -94,7 +86,7 @@ const generateExports = async options => {
       return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
     }
 
-    const ext = extname(file)
+    const ext = posix.extname(file)
     return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
   }
 
