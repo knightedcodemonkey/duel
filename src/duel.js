@@ -277,22 +277,12 @@ const duel = async args => {
       { cwd: projectDir },
     )
 
-    if (!tsc) {
-      logError('TypeScript compiler not found (expected node_modules/typescript/bin/tsc)')
-      handleErrorAndExit('1')
-    }
-
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
         const args = outDir
           ? [tsc, '-p', project, '--outDir', outDir]
           : [tsc, '-p', project]
-        const build = spawn(process.execPath, args, { stdio: 'inherit', shell: false })
-
-        build.on('error', err => {
-          logError(`Failed to start tsc at ${tsc}: ${err.message}`)
-          reject(err)
-        })
+        const build = spawn(process.execPath, args, { stdio: 'inherit' })
 
         build.on('exit', code => {
           if (code > 0) {

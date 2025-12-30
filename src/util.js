@@ -43,19 +43,9 @@ const getRealPathAsFileUrl = async path => {
   return asFileUrl
 }
 const getCompileFiles = (tscPath, wd = cwd()) => {
-  const { stdout, status, error, stderr } = spawnSync(
-    process.execPath,
-    [tscPath, '--listFilesOnly'],
-    {
-      cwd: wd,
-      shell: false,
-    },
-  )
-
-  if (status > 0 || error) {
-    const msg = stderr?.toString() || error?.message || 'tsc --listFilesOnly failed'
-    throw new Error(msg)
-  }
+  const { stdout } = spawnSync(process.execPath, [tscPath, '--listFilesOnly'], {
+    cwd: wd,
+  })
 
   // Exclude node_modules and empty strings.
   return stdout
