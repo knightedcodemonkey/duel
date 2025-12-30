@@ -1,4 +1,4 @@
-# Exports Generation Examples
+# Exports Generation
 
 This guide shows a simple before/after flow when using `duel --exports` to emit `package.json` exports.
 
