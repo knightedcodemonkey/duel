@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { argv, platform } from 'node:process'
-import { join, dirname, resolve, relative, parse as parsePath } from 'node:path'
+import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -38,7 +38,7 @@ const getSubpath = (mode, relFromRoot) => {
 
   if (mode === 'dir') {
     const last = segments.at(-1)
-    return last ? `./${last}` : null
+    return last ? `./${last}/*` : null
   }
 
   if (mode === 'wildcard') {
@@ -76,6 +76,20 @@ const generateExports = async options => {
     cjsIgnore.push(`${esmRootPosix}/**`)
   }
 
+  const toWildcardValue = value => {
+    const dir = posix.dirname(value)
+    const file = posix.basename(value)
+    const dtsMatch = file.match(/(\.d\.(?:ts|mts|cts))$/i)
+
+    if (dtsMatch) {
+      const ext = dtsMatch[1]
+      return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
+    }
+
+    const ext = posix.extname(file)
+    return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
+  }
+
   const recordPath = (kind, filePath, root) => {
     const relPkg = toPosix(relative(pkgDir, filePath))
     const relFromRoot = toPosix(relative(root, filePath))
@@ -87,13 +101,14 @@ const generateExports = async options => {
     baseMap.set(baseKey, baseEntry)
 
     const subpath = getSubpath(mode, relFromRoot)
+    const useWildcard = subpath?.includes('*')
 
     if (kind === 'types') {
       const mappedSubpath = baseToSubpath.get(baseKey)
 
       if (mappedSubpath) {
         const subEntry = subpathMap.get(mappedSubpath) ?? {}
-        subEntry.types = withDot
+        subEntry.types = useWildcard ? toWildcardValue(withDot) : withDot
         subpathMap.set(mappedSubpath, subEntry)
       }
 
@@ -102,7 +117,7 @@ const generateExports = async options => {
 
     if (subpath && subpath !== '.') {
       const subEntry = subpathMap.get(subpath) ?? {}
-      subEntry[kind] = withDot
+      subEntry[kind] = useWildcard ? toWildcardValue(withDot) : withDot
       subpathMap.set(subpath, subEntry)
       baseToSubpath.set(baseKey, subpath)
     }
@@ -189,10 +204,11 @@ const generateExports = async options => {
     }
   }
 
-  if (!exportsMap['.'] && baseMap.size) {
-    const [subpath, entry] = subpathMap.entries().next().value ?? []
+  if (!exportsMap['.']) {
+    const firstNonWildcard = [...subpathMap.entries()].find(([key]) => !key.includes('*'))
 
-    if (entry) {
+    if (firstNonWildcard) {
+      const [subpath, entry] = firstNonWildcard
       const out = {}
 
       if (entry.types) {
@@ -216,7 +232,10 @@ const generateExports = async options => {
 
       if (Object.keys(out).length) {
         exportsMap['.'] = out
-        exportsMap[subpath] ??= out
+
+        if (!exportsMap[subpath]) {
+          exportsMap[subpath] = out
+        }
       }
     }
   }

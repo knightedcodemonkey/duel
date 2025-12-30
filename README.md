@@ -53,7 +53,7 @@ And then running it:
 npm run build
 ```
 
-If everything worked, you should have an ESM build inside of `dist` and a CJS build inside of `dist/cjs`. Now you can update your [`exports`](https://nodejs.org/api/packages.html#exports) to match the build output.
+If everything worked, you should have an ESM build inside of `dist` and a CJS build inside of `dist/cjs`. You can manually update your [`exports`](https://nodejs.org/api/packages.html#exports) to match the build output, or run `duel --exports <mode>` to generate them automatically (see [docs/exports.md](docs/exports.md)).
 
 It should work similarly for a CJS-first project. Except, your package.json file would use `"type": "commonjs"` and the dual build directory is in `dist/esm`.
 
