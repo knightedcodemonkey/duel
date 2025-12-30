@@ -95,10 +95,10 @@
     ],
     "*.{js,mjs,cjs,ts,cts,mts,jsx,tsx}": [
       "eslint --max-warnings=0 --no-warn-ignored",
-      "prettier --check --ignore-unknown --with-node-modules"
+      "prettier --check --ignore-unknown"
     ],
     "*.{md,json,yml,yaml}": [
-      "prettier --check --ignore-unknown --with-node-modules"
+      "prettier --check --ignore-unknown"
     ]
   },
   "prettier": {
