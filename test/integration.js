@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import { rm, readFile, rename, writeFile } from 'node:fs/promises'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { spawnSync, execSync } from 'node:child_process'
-import { platform } from 'node:process'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
 import { duel } from '../src/duel.js'
@@ -569,10 +568,13 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
   })
 
-  it('works as a cli script', { skip: platform === 'win32' }, () => {
-    const resp = execSync(`${resolve(__dirname, '..', 'src', 'duel.js')} -h`)
+  it('works as a cli script', () => {
+    const { stdout } = spawnSync(process.execPath, [
+      resolve(__dirname, '..', 'src', 'duel.js'),
+      '-h',
+    ])
 
-    assert.ok(resp.toString().indexOf('Options:') > -1)
+    assert.ok(stdout.toString().indexOf('Options:') > -1)
   })
 
   it('reports compilation errors during a build', async t => {

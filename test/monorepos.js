@@ -1,12 +1,15 @@
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolve, join } from 'node:path'
+import { resolve, join, dirname } from 'node:path'
 import { rm } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import spawn from 'cross-spawn'
 
 import { duel } from '../src/duel.js'
 
-const fixtures = resolve(import.meta.dirname, '__fixtures__')
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const fixtures = resolve(__dirname, '__fixtures__')
 const npm = join(fixtures, 'mononpm')
 const npmOne = join(npm, 'one')
 const npmTwo = join(npm, 'two')
@@ -26,7 +29,8 @@ describe('duel monorepos', () => {
       await rmDist(join(npmTwo, 'dist'))
     })
 
-    spawnSync('npm', ['install'], { cwd: npm })
+    // cross-spawn handles Windows .cmd files without needing shell
+    spawn.sync('npm', ['install'], { cwd: npm })
 
     // Build the packages (dependency first)
     await duel(['-p', npmTwo, '-k', npmTwo, '--mode', 'globals'])
