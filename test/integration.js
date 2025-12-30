@@ -315,8 +315,10 @@ describe('duel', () => {
       const cmd = `
         import { createRequire } from 'node:module';
         import { pathToFileURL } from 'node:url';
-        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
-        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        import path from 'node:path';
+        const pkgRoot = ${JSON.stringify(exportsRes)};
+        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
+        const req = createRequire(pkgUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmRoot = await import(resolveEsm('exports-resolution'));
         const { root: cr } = req('exports-resolution');
@@ -349,9 +351,11 @@ describe('duel', () => {
     const runResolve = () => {
       const cmd = `
         import { createRequire } from 'node:module';
-        import { fileURLToPath, pathToFileURL } from 'node:url';
-        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
-        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        import { pathToFileURL } from 'node:url';
+        import path from 'node:path';
+        const pkgRoot = ${JSON.stringify(exportsRes)};
+        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
+        const req = createRequire(pkgUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmA = await import(resolveEsm('exports-resolution/utils/a'));
         const esmB = await import(resolveEsm('exports-resolution/utils/b'));
@@ -402,8 +406,10 @@ describe('duel', () => {
       const cmd = `
         import { createRequire } from 'node:module';
         import { pathToFileURL } from 'node:url';
-        const pkgRoot = '${exportsRes.replace(/\\/g, '/')}';
-        const req = createRequire(pathToFileURL(pkgRoot + '/package.json'));
+        import path from 'node:path';
+        const pkgRoot = ${JSON.stringify(exportsRes)};
+        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
+        const req = createRequire(pkgUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmFoo = await import(resolveEsm('exports-resolution/utils/foo.bar'));
         const { fooBar: cr } = req('exports-resolution/utils/foo.bar');
