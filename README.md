@@ -112,6 +112,8 @@ The available options are limited, because you should define most of them inside
 - `--mode` Optional shorthand for the module transform mode: `none` (default), `globals` (globals-only), `full` (globals + full syntax lowering).
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
+- `--exports-config` Provide a JSON file with `{ "entries": ["./dist/index.js", ...], "main": "./dist/index.js" }` to limit which outputs become exports.
+- `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
 
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.

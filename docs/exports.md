@@ -153,3 +153,23 @@ Wildcard keys use the first path segment and cover folders; values are wildcarde
 - The root `.` entry uses your `main` (if set) to pick the default orientation (import vs require) and mirrors both builds when present.
 - If `main` is absent and no non-wildcard subpath exists, `.` is not promoted.
 - Windows paths are normalized with `path.posix`.
+
+## Exports config (JSON)
+
+If you want to constrain which built files become exports while keeping a conventional layout, pass `--exports-config <file>`. The file must be JSON with this shape:
+
+```json
+{
+  "entries": ["./dist/index.js", "./dist/folder/module.js"],
+  "main": "./dist/index.js"
+}
+```
+
+- `entries` (required): array of strings pointing to emitted files (relative with `./`). Only these bases are exported.
+- `main` (optional): overrides the `main` used for the root `.` entry and default orientation.
+
+Convention over configuration remains the default: if you omit `--exports-config`, `duel` scans the output and infers exports automatically.
+
+## Validation-only
+
+Use `--exports-validate` to compute and validate the exports map without writing `package.json`. Combine with `--exports` and/or `--exports-config` to emit after validation. When run alone, it logs success and leaves your package.json untouched.

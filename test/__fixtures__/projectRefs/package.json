@@ -1,0 +1,8 @@
+{
+  "name": "project-refs",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "hoisted": "0.0.0"
+  }
+}

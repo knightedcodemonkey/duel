@@ -42,9 +42,29 @@ const init = async args => {
           type: 'string',
           short: 'e',
         },
+        'exports-config': {
+          type: 'string',
+        },
+        'exports-validate': {
+          type: 'boolean',
+          default: false,
+        },
         'transform-syntax': {
           type: 'boolean',
           short: 's',
+          default: false,
+        },
+        'rewrite-policy': {
+          type: 'string',
+          default: 'safe',
+        },
+        'validate-specifiers': {
+          type: 'boolean',
+          default: false,
+        },
+        verbose: {
+          type: 'boolean',
+          short: 'V',
           default: false,
         },
         mode: {
@@ -95,6 +115,12 @@ const init = async args => {
       bare,
     )
     log(
+      '--exports-config [path] \t\t Provide explicit exports config file.',
+      'info',
+      bare,
+    )
+    log('--exports-validate \t\t\t Validate exports without writing.', 'info', bare)
+    log(
       '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only). (deprecated; use --mode full).',
       'info',
       bare,
@@ -104,6 +130,17 @@ const init = async args => {
       'info',
       bare,
     )
+    log(
+      '--rewrite-policy [safe|warn|skip] \t Control specifier rewriting behavior.',
+      'info',
+      bare,
+    )
+    log(
+      '--validate-specifiers \t\t Validate rewritten specifiers against outputs.',
+      'info',
+      bare,
+    )
+    log('--verbose, -V \t\t\t Enable verbose logging.', 'info', bare)
     log('--help, -h \t\t\t Print this message.', 'info', bare)
   } else {
     const {
@@ -113,7 +150,12 @@ const init = async args => {
       modules,
       dirs,
       exports: exportsOpt,
+      'exports-config': exportsConfig,
+      'exports-validate': exportsValidate,
       'transform-syntax': transformSyntax,
+      'rewrite-policy': rewritePolicy,
+      'validate-specifiers': validateSpecifiers,
+      verbose,
       mode,
     } = parsed
 
@@ -190,8 +232,15 @@ const init = async args => {
         return false
       }
 
+      if (!['safe', 'warn', 'skip'].includes(rewritePolicy)) {
+        logError('--rewrite-policy expects one of: safe | warn | skip')
+
+        return false
+      }
+
       let modulesFinal = modules
       let transformSyntaxFinal = transformSyntax
+      const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
 
       if (mode) {
         if (mode === 'none') {
@@ -214,6 +263,11 @@ const init = async args => {
         modules: modulesFinal,
         transformSyntax: transformSyntaxFinal,
         exports: exportsOpt,
+        exportsConfig,
+        exportsValidate,
+        rewritePolicy,
+        validateSpecifiers: validateSpecifiersFinal,
+        verbose,
         tsconfig,
         projectDir,
         configPath,

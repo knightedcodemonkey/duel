@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "composite": true,
+    "declaration": true,
+    "outDir": "../../dist/lib",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "../../dist/lib/tsconfig.tsbuildinfo"
+  },
+  "include": ["src"]
+}

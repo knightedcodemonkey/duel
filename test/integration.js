@@ -24,6 +24,8 @@ const cjsDist = join(cjsProject, 'dist')
 const extDist = join(extended, 'dist')
 const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
 const exportsResDist = join(exportsRes, 'dist')
+const projectRefs = resolve(__dirname, '__fixtures__/projectRefs')
+const projectRefsDist = join(projectRefs, 'dist')
 const errDistDual = join(dualError, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
@@ -65,6 +67,7 @@ describe('duel', () => {
     await rmDist(errDist)
     await rmDist(plainDist)
     await rmDist(extDist)
+    await rmDist(projectRefsDist)
   })
 
   it('prints options help', async t => {
@@ -314,6 +317,97 @@ describe('duel', () => {
     assert.match(folder.require ?? '', /\*\.cjs$/)
     assert.match(folder.types ?? '', /\*\.d\.(ts|mts|cts)$/)
     assert.equal(folder.default, folder.import ?? folder.require)
+  })
+
+  it('builds project references with hoisted deps via temp dir', async t => {
+    const pkgPath = resolve(projectRefs, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(projectRefsDist)
+    })
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/app/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'app', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'app', 'cjs', 'index.cjs')))
+    assert.ok(existsSync(join(projectRefsDist, 'lib', 'index.js')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'app', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'app', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
+  it('validates exports-config without writing exports', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel([
+      '-p',
+      'test/__fixtures__/project/tsconfig.json',
+      '--exports-config',
+      'test/__fixtures__/project/exports.config.json',
+      '--exports-validate',
+    ])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+
+    assert.ok(!updatedPkg.exports)
+  })
+
+  it('filters exports to configured entries', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel([
+      '-p',
+      'test/__fixtures__/project/tsconfig.json',
+      '--exports-config',
+      'test/__fixtures__/project/exports.config.json',
+      '--exports',
+      'name',
+    ])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = updatedPkg.exports
+
+    assert.ok(exp)
+    assert.deepEqual(Object.keys(exp).sort(), ['.', './folder/module', './index'].sort())
+    assert.equal(exp['./folder/module']?.import, './dist/folder/module.js')
+    assert.equal(exp['./folder/module']?.require, './dist/cjs/folder/module.cjs')
+    assert.equal(exp['./folder/module']?.types, './dist/folder/module.d.ts')
   })
 
   it('resolves name exports via node', async t => {

@@ -3,7 +3,7 @@
 import { argv } from 'node:process'
 import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, rename, mkdir, cp, access, readFile } from 'node:fs/promises'
+import { writeFile, rm, mkdir, cp, access, readFile, symlink } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -17,14 +17,50 @@ import {
   getCompileFiles,
   log,
   logError,
+  logWarn,
   logSuccess as logSuccessBadge,
 } from './util.js'
+import { rewriteSpecifiersAndExtensions } from './resolver.js'
 
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
 }
 const ensureDotSlash = path => {
   return path.startsWith('./') ? path : `./${path}`
+}
+
+const readExportsConfig = async (configPath, pkgDir) => {
+  const abs = resolve(pkgDir, configPath)
+  const raw = await readFile(abs, 'utf8')
+
+  let parsed = null
+  try {
+    parsed = JSON.parse(raw)
+  } catch (err) {
+    throw new Error(`Invalid JSON in --exports-config (${configPath}): ${err.message}`)
+  }
+
+  const { entries, main } = parsed
+
+  if (
+    !entries ||
+    !Array.isArray(entries) ||
+    entries.some(item => typeof item !== 'string')
+  ) {
+    throw new Error(
+      '--exports-config expects an object with an "entries" array of strings',
+    )
+  }
+
+  if (main && typeof main !== 'string') {
+    throw new Error('--exports-config "main" must be a string when provided')
+  }
+
+  const normalize = value => ensureDotSlash(value.replace(/\\/g, '/'))
+  const normalizedEntries = [...new Set(entries.map(normalize))]
+  const normalizedMain = main ? normalize(main) : null
+
+  return { entries: normalizedEntries, main: normalizedMain }
 }
 
 const getSubpath = (mode, relFromRoot) => {
@@ -57,7 +93,8 @@ const handleErrorAndExit = message => {
 }
 
 const generateExports = async options => {
-  const { mode, pkg, pkgDir, esmRoot, cjsRoot, mainDefaultKind, mainPath } = options
+  const { mode, pkg, pkgDir, esmRoot, cjsRoot, mainDefaultKind, mainPath, entries } =
+    options
 
   const toPosix = path => path.replace(/\\/g, '/')
   const esmRootPosix = toPosix(esmRoot)
@@ -90,11 +127,19 @@ const generateExports = async options => {
     return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
   }
 
+  const entriesBase = entries?.length
+    ? new Set(entries.map(entry => stripKnownExt(entry.replace(/^\.\//, ''))))
+    : null
+
   const recordPath = (kind, filePath, root) => {
     const relPkg = toPosix(relative(pkgDir, filePath))
     const relFromRoot = toPosix(relative(root, filePath))
     const withDot = ensureDotSlash(relPkg)
     const baseKey = stripKnownExt(relPkg)
+
+    if (entriesBase && !entriesBase.has(baseKey)) {
+      return
+    }
     const baseEntry = baseMap.get(baseKey) ?? {}
 
     baseEntry[kind] = withDot
@@ -241,6 +286,10 @@ const generateExports = async options => {
   }
 
   if (Object.keys(exportsMap).length) {
+    if (options.validateOnly) {
+      return { exportsMap }
+    }
+
     const pkgJson = {
       ...pkg.packageJson,
       exports: exportsMap,
@@ -248,6 +297,8 @@ const generateExports = async options => {
 
     await writeFile(pkg.path, `${JSON.stringify(pkgJson, null, 2)}\n`)
   }
+
+  return { exportsMap }
 }
 const duel = async args => {
   const ctx = await init(args)
@@ -262,7 +313,13 @@ const duel = async args => {
       transformSyntax,
       pkg,
       exports: exportsOpt,
+      exportsConfig,
+      exportsValidate,
+      rewritePolicy,
+      validateSpecifiers,
+      verbose,
     } = ctx
+    const logVerbose = verbose ? (...messages) => log(...messages) : () => {}
     const tsc = await findUp(
       async dir => {
         const candidate = join(dir, 'node_modules', 'typescript', 'bin', 'tsc')
@@ -316,56 +373,13 @@ const duel = async args => {
         },
       }
     }
+    const hasReferences =
+      Array.isArray(tsconfig.references) && tsconfig.references.length > 0
+
     const runPrimaryBuild = () => {
-      return runBuild(configPath, primaryOutDir)
+      return runBuild(configPath, hasReferences ? undefined : primaryOutDir)
     }
     const syntaxMode = transformSyntax ? true : 'globals-only'
-
-    const updateSpecifiersAndFileExtensions = async (filenames, target, ext) => {
-      for (const filename of filenames) {
-        const dts = /(\.d\.ts)$/
-        const isDts = dts.test(filename)
-        const outFilename = isDts
-          ? filename.replace(dts, target === 'commonjs' ? '.d.cts' : '.d.mts')
-          : filename.replace(/\.js$/, ext)
-
-        if (isDts) {
-          const source = await readFile(filename, 'utf8')
-          const rewritten = source.replace(
-            /(?<=['"])(\.\.?(?:\/[\w.-]+)*)\.js(?=['"])/g,
-            `$1${ext}`,
-          )
-
-          await writeFile(outFilename, rewritten)
-
-          if (outFilename !== filename) {
-            await rm(filename, { force: true })
-          }
-
-          continue
-        }
-
-        const rewriteSpecifier = (value = '') => {
-          const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
-          if (/^(?:\.|\.\.)\//.test(collapsed)) {
-            return value.replace(/(.+)\.js([)"'`]*)?$/, `$1${ext}$2`)
-          }
-        }
-
-        const writeOptions = {
-          target,
-          rewriteSpecifier,
-          transformSyntax: syntaxMode,
-          ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
-        }
-
-        await transform(filename, writeOptions)
-
-        if (outFilename !== filename) {
-          await rm(filename, { force: true })
-        }
-      }
-    }
     const logSuccess = start => {
       logSuccessBadge(
         `Successfully created a dual ${isCjsBuild ? 'CJS' : 'ESM'} build in ${Math.round(
@@ -387,33 +401,83 @@ const duel = async args => {
     }
 
     if (success) {
-      const subDir = join(projectDir, `_${hex}_`)
+      const projectRoot = dirname(projectDir)
+      const subDir = join(projectRoot, `_${hex}_`)
       const absoluteDualOutDir = join(
         projectDir,
         isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
       )
       const tsconfigDual = getOverrideTsConfig()
-      const pkgRename = 'package.json.bak'
-      let dualConfigPath = join(projectDir, `tsconfig.${hex}.json`)
+      const tsconfigRel = relative(projectRoot, configPath)
+      const tsconfigDualRel = tsconfigRel.replace(
+        /tsconfig\.json$/i,
+        `tsconfig.${hex}.json`,
+      )
+      const dualConfigPath = join(subDir, tsconfigDualRel)
+      const dualConfigDir = dirname(dualConfigPath)
       let errorMsg = ''
 
+      let exportsConfigData = null
+
+      if (exportsConfig) {
+        try {
+          exportsConfigData = await readExportsConfig(exportsConfig, pkgDir)
+        } catch (err) {
+          logError(err.message)
+          process.exit(1)
+        }
+      }
+
+      const compileFiles = getCompileFiles(tsc, projectDir)
+
+      await mkdir(subDir, { recursive: true })
+      const nodeModules = await findUp('node_modules', {
+        cwd: projectRoot,
+        type: 'directory',
+      })
+      if (nodeModules) {
+        try {
+          await symlink(nodeModules, join(subDir, 'node_modules'), 'junction')
+        } catch {
+          /* If symlink fails, fall back to existing resolution. */
+        }
+      }
+      await Promise.all(
+        compileFiles.map(async file => {
+          const dest = join(subDir, relative(projectRoot, file))
+
+          await mkdir(dirname(dest), { recursive: true })
+          await cp(file, dest)
+        }),
+      )
+
+      /**
+       * Write dual package.json and tsconfig into temp dir; avoid mutating root package.json.
+       */
+      await writeFile(
+        join(subDir, relative(projectRoot, pkg.path)),
+        JSON.stringify({
+          type: isCjsBuild ? 'commonjs' : 'module',
+        }),
+      )
+
+      await mkdir(dualConfigDir, { recursive: true })
+      await writeFile(
+        dualConfigPath,
+        JSON.stringify(
+          {
+            ...tsconfigDual,
+            compilerOptions: {
+              ...tsconfigDual.compilerOptions,
+              outDir: absoluteDualOutDir,
+            },
+          },
+          null,
+          2,
+        ),
+      )
+
       if (modules) {
-        const compileFiles = getCompileFiles(tsc, projectDir)
-
-        dualConfigPath = join(subDir, `tsconfig.${hex}.json`)
-        await mkdir(subDir)
-        await Promise.all(
-          compileFiles.map(async file => {
-            const dest = join(
-              subDir,
-              relative(projectDir, file).replace(/^(\.\.\/)+/, ''),
-            )
-
-            await mkdir(dirname(dest), { recursive: true })
-            await cp(file, dest)
-          }),
-        )
-
         /**
          * Transform ambiguous modules for the target dual build.
          * @see https://github.com/microsoft/TypeScript/issues/58658
@@ -438,32 +502,17 @@ const duel = async args => {
         }
       }
 
-      /**
-       * Create a new package.json with updated `type` field.
-       * Create a new tsconfig.json.
-       */
-      await rename(pkg.path, join(pkgDir, pkgRename))
-      await writeFile(
-        pkg.path,
-        JSON.stringify({
-          type: isCjsBuild ? 'commonjs' : 'module',
-        }),
-      )
-      await writeFile(dualConfigPath, JSON.stringify(tsconfigDual))
-
       // Build dual
       log('Starting dual build...')
       try {
-        await runBuild(dualConfigPath, absoluteDualOutDir)
+        await runBuild(dualConfigPath, hasReferences ? undefined : absoluteDualOutDir)
       } catch ({ message }) {
         success = false
         errorMsg = message
       } finally {
-        // Cleanup and restore
+        // Cleanup temp dir
         await rm(dualConfigPath, { force: true })
-        await rm(pkg.path, { force: true })
         await rm(subDir, { force: true, recursive: true })
-        await rename(join(pkgDir, pkgRename), pkg.path)
 
         if (errorMsg) {
           handleErrorAndExit(errorMsg)
@@ -480,7 +529,15 @@ const duel = async args => {
           },
         )
 
-        await updateSpecifiersAndFileExtensions(filenames, dualTarget, dualTargetExt)
+        await rewriteSpecifiersAndExtensions(filenames, {
+          target: dualTarget,
+          ext: dualTargetExt,
+          syntaxMode,
+          rewritePolicy,
+          validateSpecifiers,
+          onWarn: message => logWarn(message),
+          onRewrite: (from, to) => logVerbose(`Rewrote specifiers in ${from} -> ${to}`),
+        })
 
         if (dirs && originalType === 'commonjs') {
           const primaryFiles = await glob(
@@ -488,12 +545,26 @@ const duel = async args => {
             { ignore: 'node_modules/**' },
           )
 
-          await updateSpecifiersAndFileExtensions(primaryFiles, 'commonjs', '.cjs')
+          await rewriteSpecifiersAndExtensions(primaryFiles, {
+            target: 'commonjs',
+            ext: '.cjs',
+            syntaxMode,
+            rewritePolicy,
+            validateSpecifiers,
+            onWarn: message => logWarn(message),
+            onRewrite: (from, to) => logVerbose(`Rewrote specifiers in ${from} -> ${to}`),
+          })
         }
 
-        if (exportsOpt) {
+        if (exportsOpt || exportsConfigData || exportsValidate) {
           const esmRoot = isCjsBuild ? primaryOutDir : absoluteDualOutDir
           const cjsRoot = isCjsBuild ? absoluteDualOutDir : primaryOutDir
+
+          if (exportsValidate && !exportsOpt && !exportsConfigData) {
+            logWarn(
+              '--exports-validate has no effect without --exports or --exports-config',
+            )
+          }
 
           await generateExports({
             mode: exportsOpt,
@@ -502,8 +573,19 @@ const duel = async args => {
             esmRoot,
             cjsRoot,
             mainDefaultKind,
-            mainPath,
+            mainPath: exportsConfigData?.main ?? mainPath,
+            entries: exportsConfigData?.entries,
+            validateOnly: exportsValidate,
           })
+
+          if (exportsValidate) {
+            log('Exports validation successful.')
+            if (!exportsOpt && !exportsConfigData) {
+              logWarn(
+                'No exports were written; use --exports or --exports-config to emit exports.',
+              )
+            }
+          }
         }
         logSuccess(startTime)
       }
