@@ -57,6 +57,19 @@ If everything worked, you should have an ESM build inside of `dist` and a CJS bu
 
 It should work similarly for a CJS-first project. Except, your package.json file would use `"type": "commonjs"` and the dual build directory is in `dist/esm`.
 
+> [!IMPORTANT]
+> This works best if your CJS-first project uses file extensions in _relative_ specifiers. That is acceptable in CJS and [required in ESM](https://nodejs.org/api/esm.html#import-specifiers). `duel` does not rewrite bare specifiers or remap relative specifiers to directory indexes.
+
+> [!NOTE]
+> While `duel` runs it briefly swaps in a temporary package.json with the needed `type`; your original file is restored when the build finishes.
+
+### Build orientation
+
+`duel` infers the primary vs dual build orientation from your `package.json` `type`:
+
+- `"type": "module"` → primary ESM, dual CJS
+- `"type": "commonjs"` → primary CJS, dual ESM
+
 ### Output directories
 
 If you prefer to have both builds in directories inside of your defined `outDir`, you can use the `--dirs` option.
@@ -71,30 +84,10 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 
 ### Module transforms
 
-TypeScript will throw compiler errors when using `import.meta` globals while targeting a CommonJS dual build, but _will not_ throw compiler errors when the inverse is true, i.e. using CommonJS globals (`__filename`, `__dirname`, etc.) while targeting an ES module dual build. There is an [open issue](https://github.com/microsoft/TypeScript/issues/58658) regarding this asymmetry. Prefer the single-switch `--mode` interface: `--mode globals` (equivalent to `--modules`) or `--mode full` (equivalent to `--modules --transform-syntax`) to have the [ESM vs CJS differences](https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs) transformed by `duel` prior to running `tsc` so you avoid compilation or runtime errors. The legacy `--modules`/`--transform-syntax` flags remain supported.
+`tsc` is asymmetric: `import.meta` globals fail in a CJS-targeted build, but CommonJS globals like `__filename`/`__dirname` pass when targeting ESM, causing runtime errors in the compiled output. See [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658). Use `--mode` to mitigate:
 
-`duel` infers the primary vs dual build orientation from your `package.json` `type`:
-
-- `"type": "module"` → primary ESM, dual CJS
-- `"type": "commonjs"` → primary CJS, dual ESM
-
-The `--dirs` flag nests outputs under `outDir/esm` and `outDir/cjs` accordingly. There is a small performance cost because sources are copied to run the transform before `tsc`.
-
-```json
-"scripts": {
-  "build": "duel --modules"
-}
-```
-
-For projects that need full syntax lowering, opt in explicitly:
-
-```json
-"scripts": {
-  "build": "duel --modules --transform-syntax"
-}
-```
-
-Using the single switch:
+- `--mode globals` [rewrites module globals](https://github.com/knightedcodemonkey/module/blob/main/docs/globals-only.md#rewrites-at-a-glance).
+- `--mode full` adds syntax lowering _in addition to_ the globals rewrite.
 
 ```json
 "scripts": {
@@ -108,9 +101,7 @@ Using the single switch:
 }
 ```
 
-#### Pre-`tsc` transform (TypeScript 58658)
-
-When you enable module transforms (`--mode globals`, `--mode full`, or `--modules`), `duel` copies your sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc` so the transformed files no longer trigger TypeScript’s asymmetrical module-global errors (see [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658)). No extra setup is needed: module transforms are the pre-`tsc` mitigation. If you also select full lowering (`--mode full` or `--transform-syntax`), that pre-`tsc` step performs full lowering instead of globals-only.
+When `--mode` is enabled, `duel` copies sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc`, so TypeScript sees already-mitigated sources. That pre-`tsc` step is globals-only for `--mode globals` and full lowering for `--mode full`.
 
 ## Options
 
@@ -118,9 +109,7 @@ The available options are limited, because you should define most of them inside
 
 - `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
 - `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.
-- `--mode` Optional shorthand for the module transform mode: `none` (default), `globals` (modules + globals-only), `full` (modules + full syntax lowering). Recommended.
-- `--modules, -m` Transform module globals for dual build target. Defaults to false.
-- `--transform-syntax, -s` Opt in to full syntax lowering via `@knighted/module` (default is globals-only). Implies `--modules`.
+- `--mode` Optional shorthand for the module transform mode: `none` (default), `globals` (globals-only), `full` (globals + full syntax lowering).
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
 
@@ -128,16 +117,6 @@ The available options are limited, because you should define most of them inside
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
 
 You can run `duel --help` to get the same info.
-
-## Gotchas
-
-These are definitely edge cases, and would only really come up if your project mixes file extensions. For example, if you have `.ts` files combined with `.mts`, and/or `.cts`. For most projects, things should just work as expected.
-
-- This is going to work best if your CJS-first project uses file extensions in _relative_ specifiers. This is completely acceptable in CJS projects, and [required in ESM projects](https://nodejs.org/api/esm.html#import-specifiers). This package makes no attempt to rewrite bare specifiers, or remap any relative specifiers to a directory index.
-
-- Unfortunately, `tsc` doesn't support [dual packages](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) completely. For mitigation details, see the pre-`tsc` transform note above (`--modules`).
-
-- If running `duel` with your project's package.json file open in your editor, you may temporarily see the content replaced. This is because `duel` dynamically creates a new package.json using the `type` necessary for the dual build. Your original package.json will be restored after the build completes.
 
 ## Notes
 

@@ -31,8 +31,8 @@ describe('duel monorepos', () => {
     spawnSync('npm', ['install'], { shell, cwd: npm })
 
     // Build the packages (dependency first)
-    await duel(['-p', npmTwo, '-k', npmTwo, '-m'])
-    await duel(['-p', npmOne, '-k', npmOne, '-m'])
+    await duel(['-p', npmTwo, '-k', npmTwo, '--mode', 'globals'])
+    await duel(['-p', npmOne, '-k', npmOne, '--mode', 'globals'])
 
     // Check for runtime errors against Node.js
     const { status: twoEsm } = spawnSync('node', [join(npmTwo, 'dist', 'file.js')], {
