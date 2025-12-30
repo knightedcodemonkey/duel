@@ -5,7 +5,7 @@ import { stat } from 'node:fs/promises'
 import { parseTsconfig } from 'get-tsconfig'
 import { readPackageUp } from 'read-package-up'
 
-import { logError, log } from './util.js'
+import { logError, log, logWarn } from './util.js'
 
 const init = async args => {
   let parsed = null
@@ -80,7 +80,7 @@ const init = async args => {
       bare,
     )
     log(
-      '--modules, -m \t\t\t Transform module globals for dual build target. Defaults to false.',
+      '--modules, -m \t\t\t Transform module globals for dual build target. Defaults to false. (deprecated; use --mode globals/full).',
       'info',
       bare,
     )
@@ -95,7 +95,7 @@ const init = async args => {
       bare,
     )
     log(
-      '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only).',
+      '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only). (deprecated; use --mode full).',
       'info',
       bare,
     )
@@ -116,6 +116,14 @@ const init = async args => {
       'transform-syntax': transformSyntax,
       mode,
     } = parsed
+
+    if (modules) {
+      logWarn('--modules is deprecated; prefer --mode globals or --mode full.')
+    }
+
+    if (transformSyntax) {
+      logWarn('--transform-syntax is deprecated; prefer --mode full.')
+    }
     let configPath = resolve(project)
     let stats = null
     let pkg = null

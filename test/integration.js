@@ -88,13 +88,23 @@ describe('duel', () => {
     assert.ok(logged(spy, 0).startsWith('--target-extension is deprecated'))
   })
 
+  it('warns when legacy module flags are used', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    await duel(['-m', '-p', 'test/__fixtures__'])
+    assert.ok(logged(spy, 0).startsWith('--modules is deprecated'))
+
+    await duel(['-s', '-p', 'test/__fixtures__'])
+    assert.ok(logged(spy, 2).startsWith('--transform-syntax is deprecated'))
+  })
+
   it('creates a dual CJS build while transforming module globals', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
       await rmDist(esmDist)
     })
-    await duel(['--project', 'test/__fixtures__/esmProject', '-m'])
+    await duel(['--project', 'test/__fixtures__/esmProject', '--mode', 'globals'])
 
     // Third call because of logging for starting each build.
     assert.ok(logged(spy, 2).startsWith('Successfully created a dual CJS build'))
@@ -140,7 +150,7 @@ describe('duel', () => {
     t.after(async () => {
       await rmDist(cjsDist)
     })
-    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '-m'])
+    await duel(['-p', 'test/__fixtures__/cjsProject/tsconfig.json', '--mode', 'globals'])
 
     assert.ok(logged(spy, 2).startsWith('Successfully created a dual ESM build'))
     assert.ok(existsSync(resolve(cjsDist, 'index.js')))
@@ -359,7 +369,7 @@ describe('duel', () => {
       await rmDist(plainDist)
     })
 
-    await duel(['-p', plain, '-k', plain, '-s'])
+    await duel(['-p', plain, '-k', plain, '--mode', 'full'])
 
     const logs = spy.mock.calls.map((_, i) => logged(spy, i))
 
@@ -382,14 +392,14 @@ describe('duel', () => {
     assert.equal(statusCjs, 0)
   })
 
-  it('enables module transforms when only --transform-syntax is set', async t => {
+  it('enables module transforms when --mode full is set', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
       await rmDist(errDistDual)
     })
 
-    await duel(['-p', dualError, '-s'])
+    await duel(['-p', dualError, '--mode', 'full'])
 
     assert.match(logged(spy, 0), /^Starting primary build/)
     assert.match(logged(spy, 1), /^Starting dual build/)
@@ -471,14 +481,14 @@ describe('duel', () => {
     assert.equal(logged(spy, 2), 'Compilation errors found.')
   })
 
-  it('mitigates import.meta errors when using --modules with optional full syntax lowering', async t => {
+  it('mitigates import.meta errors when using --mode full', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     t.after(async () => {
       await rmDist(errDistDual)
     })
 
-    await duel(['-p', dualError, '-m', '-s'])
+    await duel(['-p', dualError, '--mode', 'full'])
 
     assert.match(logged(spy, 0), /^Starting primary build/)
     assert.match(logged(spy, 1), /^Starting dual build/)
