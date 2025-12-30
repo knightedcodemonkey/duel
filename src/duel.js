@@ -51,7 +51,8 @@ const getSubpath = (mode, relFromRoot) => {
 }
 
 const handleErrorAndExit = message => {
-  const exitCode = Number(message)
+  const parsed = parseInt(message, 10)
+  const exitCode = Number.isNaN(parsed) ? 1 : parsed
 
   logError('Compilation errors found.')
   process.exit(exitCode)
@@ -272,7 +273,7 @@ const duel = async args => {
         for (const candidate of candidates) {
           try {
             await access(candidate)
-            return candidate
+            return resolve(candidate)
           } catch {
             /* continue */
           }
