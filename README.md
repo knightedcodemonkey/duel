@@ -60,9 +60,6 @@ It should work similarly for a CJS-first project. Except, your package.json file
 > [!IMPORTANT]
 > This works best if your CJS-first project uses file extensions in _relative_ specifiers. That is acceptable in CJS and [required in ESM](https://nodejs.org/api/esm.html#import-specifiers). `duel` does not rewrite bare specifiers or remap relative specifiers to directory indexes.
 
-> [!NOTE]
-> While `duel` runs it briefly swaps in a temporary package.json with the needed `type`; your original file is restored when the build finishes.
-
 ### Build orientation
 
 `duel` infers the primary vs dual build orientation from your `package.json` `type`:
@@ -114,6 +111,10 @@ The available options are limited, because you should define most of them inside
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
 - `--exports-config` Provide a JSON file with `{ "entries": ["./dist/index.js", ...], "main": "./dist/index.js" }` to limit which outputs become exports.
 - `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
+- `--rewrite-policy [safe|warn|skip]` Control how specifier rewrites behave when a matching target is missing (`safe` warns and skips, `warn` rewrites and warns, `skip` leaves specifiers untouched).
+- `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
+- `--verbose, -V` Verbose logging.
+- `--help, -h` Print the help text.
 
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.
