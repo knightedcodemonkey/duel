@@ -330,6 +330,13 @@ describe('duel', () => {
 
     await duel([
       '-p',
+      'test/__fixtures__/projectRefs/packages/lib/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    await duel([
+      '-p',
       'test/__fixtures__/projectRefs/packages/app/tsconfig.json',
       '--mode',
       'globals',

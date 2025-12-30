@@ -1,4 +1,4 @@
-import { lib } from 'lib/index.js'
+import { lib } from './libProxy.js'
 import { hoistedVal } from 'hoisted'
 
 export const value = lib + hoistedVal

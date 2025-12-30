@@ -50,6 +50,7 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
 
     const rewriteSpecifier = (value = '') => {
       const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
+      const hasTemplate = value.includes('${')
 
       // Only consider relative specifiers and .js endings.
       if (!/^(?:\.|\.\.)\//.test(collapsed) || !/\.js$/.test(collapsed)) {
@@ -61,6 +62,12 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
       }
 
       const next = value.replace(/(.+)\.js([)"'`]*)?$/, `$1${ext}$2`)
+
+      if (hasTemplate) {
+        // Dynamic/template specifiers cannot be validated statically; still rewrite the
+        // extension to keep CJS/ESM outputs aligned without emitting noisy warnings.
+        return next
+      }
 
       if (validateSpecifiers) {
         const fileDir = dirname(filename)

@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 
 import { argv } from 'node:process'
-import { join, dirname, resolve, relative, parse as parsePath, posix } from 'node:path'
+import {
+  join,
+  dirname,
+  resolve,
+  relative,
+  parse as parsePath,
+  posix,
+  isAbsolute,
+} from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, mkdir, cp, access, readFile, symlink } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -30,7 +38,11 @@ const ensureDotSlash = path => {
 }
 
 const readExportsConfig = async (configPath, pkgDir) => {
-  const abs = resolve(pkgDir, configPath)
+  const abs = isAbsolute(configPath)
+    ? configPath
+    : configPath.startsWith('.')
+      ? resolve(pkgDir, configPath)
+      : resolve(process.cwd(), configPath)
   const raw = await readFile(abs, 'utf8')
 
   let parsed = null
@@ -99,6 +111,8 @@ const generateExports = async options => {
   const toPosix = path => path.replace(/\\/g, '/')
   const esmRootPosix = toPosix(esmRoot)
   const cjsRootPosix = toPosix(cjsRoot)
+  const esmPrefix = toPosix(relative(pkgDir, esmRoot))
+  const cjsPrefix = toPosix(relative(pkgDir, cjsRoot))
   const esmIgnore = ['node_modules/**']
   const cjsIgnore = ['node_modules/**']
   const baseMap = new Map()
@@ -127,8 +141,32 @@ const generateExports = async options => {
     return dir === '.' ? `./*${ext}` : `${dir}/*${ext}`
   }
 
+  const expandEntriesBase = base => {
+    const variants = [base]
+
+    if (esmPrefix && cjsPrefix && esmPrefix !== cjsPrefix) {
+      const esmPrefixWithSlash = `${esmPrefix}/`
+      const cjsPrefixWithSlash = `${cjsPrefix}/`
+
+      if (base.startsWith(esmPrefixWithSlash)) {
+        variants.push(base.replace(esmPrefixWithSlash, cjsPrefixWithSlash))
+      }
+
+      if (base.startsWith(cjsPrefixWithSlash)) {
+        variants.push(base.replace(cjsPrefixWithSlash, esmPrefixWithSlash))
+      }
+    }
+
+    return variants
+  }
+
   const entriesBase = entries?.length
-    ? new Set(entries.map(entry => stripKnownExt(entry.replace(/^\.\//, ''))))
+    ? new Set(
+        entries.flatMap(entry => {
+          const normalized = stripKnownExt(entry.replace(/^\.\//, ''))
+          return expandEntriesBase(normalized)
+        }),
+      )
     : null
 
   const recordPath = (kind, filePath, root) => {
@@ -136,6 +174,7 @@ const generateExports = async options => {
     const relFromRoot = toPosix(relative(root, filePath))
     const withDot = ensureDotSlash(relPkg)
     const baseKey = stripKnownExt(relPkg)
+    const useEntriesSubpaths = Boolean(entriesBase)
 
     if (entriesBase && !entriesBase.has(baseKey)) {
       return
@@ -145,7 +184,9 @@ const generateExports = async options => {
     baseEntry[kind] = withDot
     baseMap.set(baseKey, baseEntry)
 
-    const subpath = getSubpath(mode, relFromRoot)
+    const subpath = useEntriesSubpaths
+      ? ensureDotSlash(stripKnownExt(relFromRoot))
+      : getSubpath(mode, relFromRoot)
     const useWildcard = subpath?.includes('*')
 
     if (kind === 'types') {
@@ -336,9 +377,12 @@ const duel = async args => {
 
     const runBuild = (project, outDir) => {
       return new Promise((resolve, reject) => {
-        const args = outDir
-          ? [tsc, '-p', project, '--outDir', outDir]
-          : [tsc, '-p', project]
+        const useBuildMode = hasReferences
+        const args = useBuildMode
+          ? [tsc, '-b', project]
+          : outDir
+            ? [tsc, '-p', project, '--outDir', outDir]
+            : [tsc, '-p', project]
         const build = spawn(process.execPath, args, { stdio: 'inherit' })
 
         build.on('exit', code => {
@@ -442,6 +486,32 @@ const duel = async args => {
           /* If symlink fails, fall back to existing resolution. */
         }
       }
+      const projectRel = relative(projectRoot, projectDir)
+      const projectCopyDest = join(subDir, projectRel)
+
+      const allowDist = hasReferences
+
+      await cp(projectDir, projectCopyDest, {
+        recursive: true,
+        filter: src =>
+          !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+      })
+
+      if (hasReferences) {
+        for (const ref of tsconfig.references ?? []) {
+          if (!ref.path) continue
+          const refAbs = resolve(projectDir, ref.path)
+          const refRel = relative(projectRoot, refAbs)
+          const refDest = join(subDir, refRel)
+
+          await cp(refAbs, refDest, {
+            recursive: true,
+            filter: src =>
+              !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+          })
+        }
+      }
+
       await Promise.all(
         compileFiles.map(async file => {
           const dest = join(subDir, relative(projectRoot, file))

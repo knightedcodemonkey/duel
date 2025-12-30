@@ -5,12 +5,14 @@
     "moduleResolution": "NodeNext",
     "composite": true,
     "declaration": true,
+    "allowJs": true,
     "outDir": "../../dist/app",
     "rootDir": "./src",
     "tsBuildInfoFile": "../../dist/app/tsconfig.tsbuildinfo",
     "baseUrl": "./",
     "paths": {
-      "lib/*": ["../lib/src/*"]
+      "../lib/index.js": ["../lib/src/index.ts"],
+      "hoisted": ["../node_modules/hoisted/index.d.ts"]
     }
   },
   "include": ["src"],

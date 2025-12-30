@@ -5,9 +5,10 @@
     "moduleResolution": "NodeNext",
     "composite": true,
     "declaration": true,
+    "allowJs": true,
     "outDir": "../../dist/lib",
-    "rootDir": "./src",
+    "rootDir": "./",
     "tsBuildInfoFile": "../../dist/lib/tsconfig.tsbuildinfo"
   },
-  "include": ["src"]
+  "include": ["src", "index.ts", "index.js", "index.d.ts"]
 }
