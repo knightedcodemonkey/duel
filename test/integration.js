@@ -317,8 +317,8 @@ describe('duel', () => {
         import { pathToFileURL } from 'node:url';
         import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
+        const pkgDirUrl = pathToFileURL(pkgRoot + path.sep);
+        const req = createRequire(pkgDirUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmRoot = await import(resolveEsm('exports-resolution'));
         const { root: cr } = req('exports-resolution');
@@ -354,8 +354,8 @@ describe('duel', () => {
         import { pathToFileURL } from 'node:url';
         import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
+        const pkgDirUrl = pathToFileURL(pkgRoot + path.sep);
+        const req = createRequire(pkgDirUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmA = await import(resolveEsm('exports-resolution/utils/a'));
         const esmB = await import(resolveEsm('exports-resolution/utils/b'));
@@ -408,8 +408,8 @@ describe('duel', () => {
         import { pathToFileURL } from 'node:url';
         import path from 'node:path';
         const pkgRoot = ${JSON.stringify(exportsRes)};
-        const pkgUrl = pathToFileURL(path.join(pkgRoot, 'package.json'));
-        const req = createRequire(pkgUrl);
+        const pkgDirUrl = pathToFileURL(pkgRoot + path.sep);
+        const req = createRequire(pkgDirUrl);
         const resolveEsm = spec => req.resolve(spec);
         const esmFoo = await import(resolveEsm('exports-resolution/utils/foo.bar'));
         const { fooBar: cr } = req('exports-resolution/utils/foo.bar');
