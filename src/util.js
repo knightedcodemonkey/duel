@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { realpath } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
-import { cwd, platform } from 'node:process'
+import { cwd } from 'node:process'
 import { EOL } from 'node:os'
 
 const COLORS = {
@@ -42,11 +42,20 @@ const getRealPathAsFileUrl = async path => {
 
   return asFileUrl
 }
-const getCompileFiles = (tscBinPath, wd = cwd()) => {
-  const { stdout } = spawnSync(tscBinPath, ['--listFilesOnly'], {
-    cwd: wd,
-    shell: platform === 'win32',
-  })
+const getCompileFiles = (tscPath, wd = cwd()) => {
+  const { stdout, status, error, stderr } = spawnSync(
+    process.execPath,
+    [tscPath, '--listFilesOnly'],
+    {
+      cwd: wd,
+      shell: false,
+    },
+  )
+
+  if (status > 0 || error) {
+    const msg = stderr?.toString() || error?.message || 'tsc --listFilesOnly failed'
+    throw new Error(msg)
+  }
 
   // Exclude node_modules and empty strings.
   return stdout
