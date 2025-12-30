@@ -4,6 +4,7 @@ This guide shows a simple before/after flow when using `duel --exports` to emit 
 
 > [!TIP]
 > **Convention over Configuration**
+>
 > The `--exports` option is designed to be zero-config. It determines your public API by scanning your build output and applying standard Node.js patterns. It assumes that your directory structure reflects your intended module boundaries. If you need to hide specific files or create complex custom mappings, you should manage the exports field manually; `duel` is built to handle the 90% of use cases that follow standard project layouts without requiring a separate configuration file.
 
 ## Scenario
