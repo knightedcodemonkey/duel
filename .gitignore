@@ -1,4 +1,5 @@
 *.tgz
 dist
 node_modules
+!test/__fixtures__/projectRefs/node_modules/**
 coverage
