@@ -2,5 +2,6 @@
   "name": "hoisted",
   "version": "0.0.0",
   "type": "module",
-  "exports": "./index.js"
+  "main": "./index.js",
+  "types": "./index.d.ts"
 }

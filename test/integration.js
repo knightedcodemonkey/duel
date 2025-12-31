@@ -28,6 +28,25 @@ const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
 const exportsResDist = join(exportsRes, 'dist')
 const projectRefs = resolve(__dirname, '__fixtures__/projectRefs')
 const projectRefsDist = join(projectRefs, 'dist')
+let projectRefsInstalled = false
+const itCI = process.env.CI ? it : it.skip
+
+const ensureProjectRefsInstalled = () => {
+  if (projectRefsInstalled) return
+
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const res = spawnSync(npmCmd, ['install', '--ignore-scripts', '--no-fund'], {
+    cwd: projectRefs,
+    stdio: 'inherit',
+    shell: false,
+  })
+
+  if (res.status !== 0) {
+    throw new Error('projectRefs npm install failed')
+  }
+
+  projectRefsInstalled = true
+}
 const errDistDual = join(dualError, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
@@ -80,11 +99,18 @@ describe('duel', () => {
     assert.ok(logged(spy, 1).startsWith('Options:'))
   })
 
-  it('reports errors when passing invalid options', async t => {
+  itCI('reports errors when passing invalid options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--invalid'])
     assert.equal(logged(spy, 0), "Unknown option '--invalid'")
+  })
+
+  itCI('reports errors for invalid copy modes', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    await duel(['--copy-mode', 'nope'])
+    assert.ok(logged(spy, 0).includes('--copy-mode expects'))
   })
 
   it('uses default --project value of "tsconfig.json"', async t => {
@@ -105,7 +131,7 @@ describe('duel', () => {
     assert.ok(logged(spy, 0).endsWith('no tsconfig.json.'))
   })
 
-  it('reports errors for invalid dual hazard options', async t => {
+  itCI('reports errors for invalid dual hazard options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--dual-package-hazard-scope', 'nope'])
@@ -236,6 +262,20 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
   })
 
+  it('builds with full copy mode when requested', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(plainDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--copy-mode', 'full'])
+
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual CJS build'))
+    assert.ok(existsSync(resolve(plainDist, 'index.js')))
+    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+  })
+
   it('generates exports when requested', async t => {
     const pkgPath = resolve(project, 'package.json')
     const originalPkg = await readFile(pkgPath, 'utf8')
@@ -324,6 +364,8 @@ describe('duel', () => {
       await rmDist(projectRefsDist)
     })
 
+    ensureProjectRefsInstalled()
+
     await duel([
       '-p',
       'test/__fixtures__/projectRefs/packages/lib/tsconfig.json',
@@ -363,6 +405,85 @@ describe('duel', () => {
     assert.equal(cjsStatus, 0)
   })
 
+  it('builds multi-hop project references (sources copy)', async t => {
+    t.after(async () => {
+      await rmDist(projectRefsDist)
+    })
+
+    ensureProjectRefsInstalled()
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/chain-a/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'chain-a', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-b', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-c', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-a', 'cjs', 'index.cjs')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'chain-a', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'chain-a', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
+  it('honors explicit tsconfig filenames in references', async t => {
+    t.after(async () => {
+      await rmDist(projectRefsDist)
+    })
+
+    ensureProjectRefsInstalled()
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/custom-app/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'custom-app', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'custom-lib', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'custom-app', 'cjs', 'index.cjs')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'custom-app', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'custom-app', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
   it('surfaces project dual package hazards', async t => {
     const spy = t.mock.method(global.console, 'log')
 
@@ -370,14 +491,7 @@ describe('duel', () => {
       await rmDist(hazardDist)
     })
 
-    await duel([
-      '-p',
-      dualHazard,
-      '--mode',
-      'globals',
-      '--dual-package-hazard-scope',
-      'project',
-    ])
+    await duel(['-p', dualHazard, '--dual-package-hazard-scope', 'project'])
 
     const hazards = spy.mock.calls
       .map((_, i) => logged(spy, i))
@@ -404,8 +518,6 @@ describe('duel', () => {
         await duel([
           '-p',
           dualHazard,
-          '--mode',
-          'globals',
           '--dual-package-hazard-scope',
           'project',
           '--detect-dual-package-hazard',

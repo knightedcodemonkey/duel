@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": "./",
+    "types": [],
+    "composite": true,
+    "declaration": true,
+    "outDir": "../../dist/chain-b",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "../../dist/chain-b/tsconfig.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [{ "path": "../chain-c" }],
+  "exclude": ["../../dist/chain-b"]
+}

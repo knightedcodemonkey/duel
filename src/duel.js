@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { argv } from 'node:process'
-import { join, dirname, resolve, relative } from 'node:path'
+import { join, dirname, resolve, relative, sep } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, mkdir, cp, access } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -10,6 +10,7 @@ import { performance } from 'node:perf_hooks'
 import { glob } from 'glob'
 import { findUp } from 'find-up'
 import { transform, collectProjectDualPackageHazards } from '@knighted/module'
+import { getTsconfig, parseTsconfig } from 'get-tsconfig'
 
 import { init } from './init.js'
 import {
@@ -75,6 +76,7 @@ const duel = async args => {
       detectDualPackageHazard,
       dualPackageHazardScope,
       verbose,
+      copyMode,
     } = ctx
     const logVerbose = verbose ? (...messages) => log(...messages) : () => {}
     const tsc = await findUp(
@@ -137,9 +139,152 @@ const duel = async args => {
     }
     const hasReferences =
       Array.isArray(tsconfig.references) && tsconfig.references.length > 0
-
     const runPrimaryBuild = () => {
       return runBuild(configPath, hasReferences ? undefined : primaryOutDir)
+    }
+    const resolveReferenceConfigPath = (baseDir, refPath) => {
+      const abs = resolve(baseDir, refPath)
+
+      return /\.json$/i.test(abs) ? abs : join(abs, 'tsconfig.json')
+    }
+    const collectCompileFilesWithReferences = async () => {
+      const seenConfigs = new Set()
+      const compileFiles = new Set()
+      const configFiles = new Set()
+      const packageJsons = new Set()
+      const queue = [{ configPath, tsconfig, projectDir }]
+      const isLocalConfig = candidate => {
+        const normalized = resolve(candidate)
+        return (
+          normalized.startsWith(projectDir) &&
+          !normalized.split(sep).includes('node_modules')
+        )
+      }
+      const resolveExtendsConfig = (specifier, cwdForProject) => {
+        try {
+          const resolved = getTsconfig(specifier, { cwd: cwdForProject })
+
+          if (resolved?.path) {
+            return {
+              path: resolved.path,
+              tsconfig: resolved.tsconfig ?? resolved,
+            }
+          }
+        } catch {
+          /* ignore and fall back */
+        }
+
+        if (/^\.{1,2}[\\/]/.test(specifier)) {
+          const candidate = resolve(cwdForProject, specifier)
+
+          try {
+            const parsed = parseTsconfig(candidate)
+            const parsedConfig = parsed?.tsconfig ?? parsed
+
+            if (parsedConfig) {
+              return { path: candidate, tsconfig: parsedConfig }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        return null
+      }
+
+      logVerbose(`Root tsconfig references: ${JSON.stringify(tsconfig.references ?? [])}`)
+
+      while (queue.length) {
+        const current = queue.pop()
+        const absConfig = resolve(current.configPath)
+
+        if (seenConfigs.has(absConfig)) continue
+        seenConfigs.add(absConfig)
+        configFiles.add(absConfig)
+
+        const cwdForProject = dirname(absConfig)
+        const extendsPath = current.tsconfig.extends
+
+        if (extendsPath) {
+          const resolvedExtends = resolveExtendsConfig(extendsPath, cwdForProject)
+
+          if (resolvedExtends) {
+            const { path: extendsConfigPath, tsconfig: nextExtendsConfig } =
+              resolvedExtends
+
+            if (isLocalConfig(extendsConfigPath)) {
+              configFiles.add(extendsConfigPath)
+              logVerbose(`Including extended tsconfig ${extendsConfigPath} in copy plan`)
+              queue.push({
+                configPath: extendsConfigPath,
+                tsconfig: nextExtendsConfig,
+                projectDir: dirname(extendsConfigPath),
+              })
+            } else {
+              logVerbose(`Skipping external extended tsconfig ${extendsConfigPath}`)
+            }
+          }
+        }
+        const files = getCompileFiles(tsc, { project: absConfig, cwd: cwdForProject })
+
+        for (const file of files) {
+          compileFiles.add(file)
+
+          const jsSibling = file.replace(/\.(mts|cts|tsx|ts|d\.ts)$/i, '.js')
+
+          if (jsSibling !== file) {
+            try {
+              await access(jsSibling)
+              compileFiles.add(jsSibling)
+            } catch {
+              /* optional */
+            }
+          }
+        }
+
+        const pkgPath = join(cwdForProject, 'package.json')
+
+        try {
+          await access(pkgPath)
+          packageJsons.add(pkgPath)
+        } catch {
+          /* optional */
+        }
+
+        for (const ref of current.tsconfig.references ?? []) {
+          if (!ref?.path) continue
+
+          const refConfigPath = resolveReferenceConfigPath(cwdForProject, ref.path)
+
+          try {
+            const parsed = parseTsconfig(refConfigPath)
+            const nextTsconfig = parsed?.tsconfig ?? parsed
+
+            if (nextTsconfig) {
+              logVerbose(`Including project reference ${refConfigPath} in copy plan`)
+              queue.push({
+                configPath: refConfigPath,
+                tsconfig: nextTsconfig,
+                projectDir: dirname(refConfigPath),
+              })
+            }
+          } catch (err) {
+            logWarn(
+              `Skipping missing or invalid project reference at ${refConfigPath}: ${err.message}`,
+            )
+          }
+        }
+      }
+
+      logVerbose(
+        `Copy plan (mode=${copyMode}): ${compileFiles.size} compile files, ${configFiles.size} tsconfig files, ${packageJsons.size} package.json files`,
+      )
+
+      return {
+        compileFiles: Array.from(compileFiles),
+        configFiles,
+        packageJsons,
+      }
     }
     const syntaxMode = transformSyntax ? true : 'globals-only'
     const logSuccess = start => {
@@ -164,6 +309,7 @@ const duel = async args => {
 
     if (success) {
       const projectRoot = dirname(projectDir)
+      const parentRoot = dirname(projectRoot)
       const subDir = join(projectRoot, `_${hex}_`)
       const absoluteDualOutDir = join(
         projectDir,
@@ -190,7 +336,8 @@ const duel = async args => {
         }
       }
 
-      const compileFiles = getCompileFiles(tsc, projectDir)
+      const { compileFiles, configFiles, packageJsons } =
+        await collectCompileFilesWithReferences()
       const sourceFiles = compileFiles.filter(file => {
         const isSupported = /\.(?:[cm]?jsx?|[cm]?tsx?)$/i.test(file)
         const isDeclaration = /\.d\.[cm]?tsx?$/i.test(file)
@@ -224,37 +371,91 @@ const duel = async args => {
       const projectRel = relative(projectRoot, projectDir)
       const projectCopyDest = join(subDir, projectRel)
 
-      const allowDist = hasReferences
+      if (copyMode === 'full') {
+        const allowDist = hasReferences
 
-      await cp(projectDir, projectCopyDest, {
-        recursive: true,
-        filter: src =>
-          !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
-      })
+        await cp(projectDir, projectCopyDest, {
+          recursive: true,
+          filter: src =>
+            !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+        })
 
-      if (hasReferences) {
-        for (const ref of tsconfig.references ?? []) {
-          if (!ref.path) continue
-          const refAbs = resolve(projectDir, ref.path)
-          const refRel = relative(projectRoot, refAbs)
-          const refDest = join(subDir, refRel)
+        if (hasReferences) {
+          for (const ref of tsconfig.references ?? []) {
+            if (!ref.path) continue
+            const refAbs = resolve(projectDir, ref.path)
+            const refRel = relative(projectRoot, refAbs)
+            const refDest = join(subDir, refRel)
 
-          await cp(refAbs, refDest, {
+            await cp(refAbs, refDest, {
+              recursive: true,
+              filter: src =>
+                !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+            })
+          }
+        }
+      } else {
+        const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
+
+        for (const file of filesToCopy) {
+          let rel = relative(projectRoot, file)
+
+          if (rel.startsWith('..')) {
+            const altRel = hasReferences ? relative(parentRoot, file) : rel
+
+            if (!altRel.startsWith('..')) {
+              rel = altRel
+            } else {
+              logWarn(`Skipping copy for ${file} outside of project root ${projectRoot}`)
+              continue
+            }
+          }
+
+          const dest = join(subDir, rel)
+
+          await mkdir(dirname(dest), { recursive: true })
+          await cp(file, dest)
+        }
+
+        let missingConfig = false
+
+        for (const configFile of configFiles) {
+          const dest = join(subDir, relative(projectRoot, configFile))
+
+          try {
+            await access(dest)
+          } catch {
+            missingConfig = true
+            logWarn(
+              `Falling back to full copy; missing referenced config ${configFile} in temp workspace.`,
+            )
+            break
+          }
+        }
+
+        if (missingConfig) {
+          const allowDist = hasReferences
+
+          await cp(projectDir, projectCopyDest, {
             recursive: true,
             filter: src =>
               !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
           })
+
+          for (const ref of tsconfig.references ?? []) {
+            if (!ref.path) continue
+            const refAbs = resolve(projectDir, ref.path)
+            const refRel = relative(projectRoot, refAbs)
+            const refDest = join(subDir, refRel)
+
+            await cp(refAbs, refDest, {
+              recursive: true,
+              filter: src =>
+                !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+            })
+          }
         }
       }
-
-      await Promise.all(
-        compileFiles.map(async file => {
-          const dest = join(subDir, relative(projectRoot, file))
-
-          await mkdir(dirname(dest), { recursive: true })
-          await cp(file, dest)
-        }),
-      )
 
       /**
        * Write dual package.json and tsconfig into temp dir; avoid mutating root package.json.
@@ -332,9 +533,15 @@ const duel = async args => {
         success = false
         errorMsg = message
       } finally {
-        // Cleanup temp dir
-        await rm(dualConfigPath, { force: true })
-        await rm(subDir, { force: true, recursive: true })
+        const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
+
+        // Cleanup temp dir unless debugging is requested
+        if (!keepTemp) {
+          await rm(dualConfigPath, { force: true })
+          await rm(subDir, { force: true, recursive: true })
+        } else {
+          logWarn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
+        }
 
         if (errorMsg) {
           handleErrorAndExit(errorMsg)

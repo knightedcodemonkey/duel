@@ -3,13 +3,13 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": [],
     "composite": true,
     "declaration": true,
-    "allowJs": true,
-    "outDir": "../../dist/app",
+    "outDir": "../../dist/chain-c",
     "rootDir": "./src",
-    "tsBuildInfoFile": "../../dist/app/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "../../dist/chain-c/tsconfig.tsbuildinfo"
   },
   "include": ["src"],
-  "references": [{ "path": "../lib" }]
+  "exclude": ["../../dist/chain-c"]
 }

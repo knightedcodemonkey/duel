@@ -124,6 +124,7 @@ The available options are limited, because you should define most of them inside
 - `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
 - `--detect-dual-package-hazard [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero.
 - `--dual-package-hazard-scope [file|project]` Run hazard checks per file (default) or aggregate across the project.
+- `--copy-mode [sources|full]` Temp copy strategy. `sources` (default) copies only files participating in the build (plus configs); `full` mirrors the previous whole-project copy.
 - `--verbose, -V` Verbose logging.
 - `--help, -h` Print the help text.
 

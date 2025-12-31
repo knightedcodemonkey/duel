@@ -3,7 +3,15 @@ import { realpath, readFile, writeFile, symlink } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { cwd } from 'node:process'
 import { EOL } from 'node:os'
-import { join, resolve, relative, parse as parsePath, posix, isAbsolute } from 'node:path'
+import {
+  join,
+  resolve,
+  relative,
+  parse as parsePath,
+  posix,
+  isAbsolute,
+  sep,
+} from 'node:path'
 
 import { glob } from 'glob'
 import { findUp } from 'find-up'
@@ -44,16 +52,36 @@ const getRealPathAsFileUrl = async path => {
 
   return asFileUrl
 }
-const getCompileFiles = (tscPath, wd = cwd()) => {
-  const { stdout } = spawnSync(process.execPath, [tscPath, '--listFilesOnly'], {
-    cwd: wd,
+const getCompileFiles = (tscPath, options = {}) => {
+  const { cwd: workingDir = cwd(), project = null } =
+    typeof options === 'string' ? { cwd: options, project: null } : options
+  const args = [tscPath]
+
+  if (project) {
+    args.push('-p', project)
+  }
+
+  args.push('--listFilesOnly')
+
+  const { stdout } = spawnSync(process.execPath, args, {
+    cwd: workingDir,
   })
 
-  // Exclude node_modules and empty strings.
+  const root = resolve(workingDir)
+  const normalize = candidate =>
+    isAbsolute(candidate) ? candidate : resolve(workingDir, candidate)
+  const isInsideRoot = candidate =>
+    candidate === root || candidate.startsWith(`${root}${sep}`)
+  const isNodeModules = candidate => candidate.split(sep).includes('node_modules')
+
+  // Exclude node_modules and anything outside the working directory.
   return stdout
     .toString()
     .split(EOL)
-    .filter(path => !/node_modules|^$/.test(path))
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(normalize)
+    .filter(path => isInsideRoot(path) && !isNodeModules(path))
 }
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')

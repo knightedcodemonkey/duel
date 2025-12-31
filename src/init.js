@@ -71,6 +71,11 @@ const cliOptions = [
     desc: 'Enable verbose logging.',
   },
   {
+    long: 'copy-mode',
+    value: '[sources|full]',
+    desc: 'Control temp copy strategy (sources only vs full project).',
+  },
+  {
     long: 'help',
     short: 'h',
     desc: 'Print this message.',
@@ -151,6 +156,10 @@ const init = async args => {
           short: 'V',
           default: false,
         },
+        'copy-mode': {
+          type: 'string',
+          default: 'sources',
+        },
         mode: {
           type: 'string',
         },
@@ -185,6 +194,7 @@ const init = async args => {
       'dual-package-hazard-scope': dualPackageHazardScope,
       verbose,
       mode,
+      'copy-mode': copyMode,
     } = parsed
     let configPath = resolve(project)
     let stats = null
@@ -262,6 +272,12 @@ const init = async args => {
         return false
       }
 
+      if (!['sources', 'full'].includes(copyMode)) {
+        logError('--copy-mode expects one of: sources | full')
+
+        return false
+      }
+
       let modulesFinal = false
       let transformSyntaxFinal = false
       const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
@@ -292,6 +308,7 @@ const init = async args => {
         detectDualPackageHazard,
         dualPackageHazardScope,
         verbose,
+        copyMode,
         tsconfig,
         projectDir,
         configPath,

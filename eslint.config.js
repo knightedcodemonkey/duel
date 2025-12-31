@@ -61,4 +61,7 @@ export default [
       'no-console': 'off',
     },
   },
+  {
+    ignores: ['test/__fixtures__/projectRefs/packages/**'],
+  },
 ]
