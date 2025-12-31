@@ -85,7 +85,7 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
-    "@knighted/module": "file:../module/knighted-module-1.4.0-rc.2.tgz",
+    "@knighted/module": "^1.4.0-rc.2",
     "find-up": "^8.0.0",
     "get-tsconfig": "^4.13.0",
     "glob": "^13.0.0",
