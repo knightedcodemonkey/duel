@@ -105,13 +105,6 @@ describe('duel', () => {
     assert.ok(logged(spy, 0).endsWith('no tsconfig.json.'))
   })
 
-  it('reports errors when using deprecated --target-extension', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    await duel(['-x', '.mjs'])
-    assert.ok(logged(spy, 0).startsWith('--target-extension is deprecated'))
-  })
-
   it('reports errors for invalid dual hazard options', async t => {
     const spy = t.mock.method(global.console, 'log')
 

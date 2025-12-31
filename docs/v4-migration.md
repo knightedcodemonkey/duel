@@ -7,9 +7,10 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 - **Specifier rewrites now default to safer behavior.** `--rewrite-policy` now defaults to `safe`, and `--validate-specifiers` is forced on when policy is `safe`. Missing targets skip rewrites and emit warnings instead of silently rewriting.
 - **Dual-package hazard detection enabled by default.** `--detect-dual-package-hazard` now defaults to `warn`, and `--dual-package-hazard-scope` defaults to `file`. You may see new warnings (or errors if configured).
 - **Build pipeline runs in a temp workspace copy.** Dual builds no longer mutate the root `package.json`; a temp copy is created with an adjusted `type`. External tools that watched in-place `package.json` edits will see different behavior.
+  - **IMPORTANT:** The temp-copy flow adds some I/O for large repos (copying sources/reference packages and running transforms there). `node_modules` is skipped; when references exist, existing `dist` may be reused. Very large projects may see modestly slower runs compared to the old in-place mutation.
 - **Project references run with `tsc -b`.** When `tsconfig.json` contains references, builds switch to TypeScript build mode. Output shape can differ from `tsc -p` for some setups.
 - **Exports tooling additions.** New flags (`--exports-config`, `--exports-validate`) are available; when used, they can emit warnings or fail on invalid configs.
-- **Deprecated flags removed.** `--modules` and `--transform-syntax` are gone; use `--mode globals` or `--mode full` instead.
+- **Deprecated flags removed.** `--modules`, `--transform-syntax`, and `--target-extension` are gone; use `--mode globals` or `--mode full` instead.
 
 ## Restoring v3-like Behavior
 

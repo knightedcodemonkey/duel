@@ -109,11 +109,6 @@ const init = async args => {
           short: 'p',
           default: 'tsconfig.json',
         },
-        'target-extension': {
-          type: 'string',
-          short: 'x',
-          default: '',
-        },
         'pkg-dir': {
           type: 'string',
           short: 'k',
@@ -179,7 +174,6 @@ const init = async args => {
   } else {
     const {
       project,
-      'target-extension': targetExt,
       'pkg-dir': pkgDir,
       dirs,
       exports: exportsOpt,
@@ -198,14 +192,6 @@ const init = async args => {
 
     if (mode && !['none', 'globals', 'full'].includes(mode)) {
       logError('--mode expects one of: none | globals | full')
-
-      return false
-    }
-
-    if (targetExt) {
-      logError(
-        '--target-extension is deprecated. Define "type" in your package.json instead and the dual build will be inferred from that.',
-      )
 
       return false
     }
