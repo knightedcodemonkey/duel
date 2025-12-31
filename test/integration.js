@@ -7,6 +7,8 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
+import spawn from 'cross-spawn'
+
 import { duel } from '../src/duel.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -34,11 +36,9 @@ const itCI = process.env.CI ? it : it.skip
 const ensureProjectRefsInstalled = () => {
   if (projectRefsInstalled) return
 
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const res = spawnSync(npmCmd, ['install', '--ignore-scripts', '--no-fund'], {
+  const res = spawn.sync('npm', ['install', '--ignore-scripts', '--no-fund'], {
     cwd: projectRefs,
     stdio: 'inherit',
-    shell: false,
   })
 
   if (res.status !== 0) {

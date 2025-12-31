@@ -1,8 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { realpath, readFile, writeFile, symlink } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
-import { cwd } from 'node:process'
-import { EOL } from 'node:os'
+import { cwd, platform } from 'node:process'
 import {
   join,
   resolve,
@@ -11,6 +10,7 @@ import {
   posix,
   isAbsolute,
   sep,
+  normalize as normalizePath,
 } from 'node:path'
 
 import { glob } from 'glob'
@@ -67,21 +67,32 @@ const getCompileFiles = (tscPath, options = {}) => {
     cwd: workingDir,
   })
 
-  const root = resolve(workingDir)
+  const root = normalizePath(resolve(workingDir))
   const normalize = candidate =>
-    isAbsolute(candidate) ? candidate : resolve(workingDir, candidate)
-  const isInsideRoot = candidate =>
-    candidate === root || candidate.startsWith(`${root}${sep}`)
-  const isNodeModules = candidate => candidate.split(sep).includes('node_modules')
+    normalizePath(isAbsolute(candidate) ? candidate : resolve(workingDir, candidate))
+  const toComparable = path => (platform === 'win32' ? path.toLowerCase() : path)
+  const rootComparable = toComparable(root)
+  const isInsideRoot = candidate => {
+    const comparable = toComparable(candidate)
 
-  // Exclude node_modules and anything outside the working directory.
-  return stdout
+    return (
+      comparable === rootComparable || comparable.startsWith(`${rootComparable}${sep}`)
+    )
+  }
+  const isNodeModules = candidate => candidate.split(sep).includes('node_modules')
+  const allPaths = stdout
     .toString()
-    .split(EOL)
+    // tsc may emit LF or CRLF depending on shell/platform; accept both.
+    .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
     .map(normalize)
-    .filter(path => isInsideRoot(path) && !isNodeModules(path))
+    .filter(path => !isNodeModules(path))
+  const insideRoot = allPaths.filter(isInsideRoot)
+
+  // Prefer paths within the project root; if normalization issues drop them all (Windows edge),
+  // fall back to the unbounded list to avoid losing real source files.
+  return insideRoot.length ? insideRoot : allPaths
 }
 const stripKnownExt = path => {
   return path.replace(/(\.d\.(?:ts|mts|cts)|\.(?:mjs|cjs|js))$/, '')
@@ -94,7 +105,7 @@ const readExportsConfig = async (configPath, pkgDir) => {
     ? configPath
     : configPath.startsWith('.')
       ? resolve(pkgDir, configPath)
-      : resolve(process.cwd(), configPath)
+      : resolve(cwd(), configPath)
   const raw = await readFile(abs, 'utf8')
 
   let parsed = null
