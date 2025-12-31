@@ -7,6 +7,106 @@ import { readPackageUp } from 'read-package-up'
 
 import { logError, log, logWarn } from './util.js'
 
+const cliOptions = [
+  {
+    long: 'project',
+    short: 'p',
+    value: '[path]',
+    desc: "Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+  },
+  {
+    long: 'pkg-dir',
+    short: 'k',
+    value: '[path]',
+    desc: 'Directory to start looking for package.json; defaults to --project.',
+  },
+  {
+    long: 'modules',
+    short: 'm',
+    desc: 'Transform module globals for dual build target. (deprecated; use --mode globals/full).',
+  },
+  {
+    long: 'dirs',
+    short: 'd',
+    desc: 'Output both builds to directories inside of outDir. [esm, cjs].',
+  },
+  {
+    long: 'exports',
+    short: 'e',
+    value: '[mode]',
+    desc: 'Generate package.json exports. Values: wildcard | dir | name.',
+  },
+  {
+    long: 'exports-config',
+    value: '[path]',
+    desc: 'Provide explicit exports config file.',
+  },
+  {
+    long: 'exports-validate',
+    desc: 'Validate exports without writing.',
+  },
+  {
+    long: 'transform-syntax',
+    short: 's',
+    desc: 'Opt in to full syntax lowering via @knighted/module. (deprecated; use --mode full).',
+  },
+  {
+    long: 'mode',
+    value: '[none|globals|full]',
+    desc: 'Optional shorthand for module transforms and syntax lowering.',
+  },
+  {
+    long: 'rewrite-policy',
+    value: '[safe|warn|skip]',
+    desc: 'Control specifier rewriting behavior.',
+  },
+  {
+    long: 'validate-specifiers',
+    desc: 'Validate rewritten specifiers against outputs.',
+  },
+  {
+    long: 'detect-dual-package-hazard',
+    short: 'H',
+    value: '[off|warn|error]',
+    desc: 'Detect mixed import/require use of dual packages.',
+  },
+  {
+    long: 'dual-package-hazard-scope',
+    value: '[file|project]',
+    desc: 'Scope for dual package hazard detection.',
+  },
+  {
+    long: 'verbose',
+    short: 'V',
+    desc: 'Enable verbose logging.',
+  },
+  {
+    long: 'help',
+    short: 'h',
+    desc: 'Print this message.',
+  },
+]
+
+const printHelp = () => {
+  const bare = { bare: true }
+  const flags = cliOptions.map(opt => {
+    const value = opt.value ? ` ${opt.value}` : ''
+    const short = opt.short ? `-${opt.short}, ` : '    '
+    const long = `--${opt.long}${value}`
+
+    return { flag: `${short}${long}`, desc: opt.desc }
+  })
+  const maxFlag = Math.max(...flags.map(f => f.flag.length))
+
+  log('Usage: duel [options]\n', 'info', bare)
+  log('Options:', 'info', bare)
+
+  for (const { flag, desc } of flags) {
+    const pad = ' '.repeat(Math.max(2, maxFlag - flag.length + 2))
+    log(`${flag}${pad}${desc}`, 'info', bare)
+  }
+}
+
 const init = async args => {
   let parsed = null
 
@@ -62,6 +162,15 @@ const init = async args => {
           type: 'boolean',
           default: false,
         },
+        'detect-dual-package-hazard': {
+          type: 'string',
+          short: 'H',
+          default: 'warn',
+        },
+        'dual-package-hazard-scope': {
+          type: 'string',
+          default: 'file',
+        },
         verbose: {
           type: 'boolean',
           short: 'V',
@@ -86,62 +195,7 @@ const init = async args => {
   }
 
   if (parsed.help) {
-    const bare = { bare: true }
-    log('Usage: duel [options]\n', 'info', bare)
-    log('Options:', 'info', bare)
-    log(
-      "--project, -p [path] \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
-      'info',
-      bare,
-    )
-    log(
-      '--pkg-dir, -k [path] \t\t The directory to start looking for a package.json file. Defaults to --project directory.',
-      'info',
-      bare,
-    )
-    log(
-      '--modules, -m \t\t\t Transform module globals for dual build target. Defaults to false. (deprecated; use --mode globals/full).',
-      'info',
-      bare,
-    )
-    log(
-      '--dirs, -d \t\t\t Output both builds to directories inside of outDir. [esm, cjs].',
-      'info',
-      bare,
-    )
-    log(
-      '--exports, -e \t\t\t Generate package.json exports. Values: wildcard | dir | name.',
-      'info',
-      bare,
-    )
-    log(
-      '--exports-config [path] \t\t Provide explicit exports config file.',
-      'info',
-      bare,
-    )
-    log('--exports-validate \t\t\t Validate exports without writing.', 'info', bare)
-    log(
-      '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only). (deprecated; use --mode full).',
-      'info',
-      bare,
-    )
-    log(
-      '--mode [none|globals|full] \t Optional shorthand for module transforms and syntax lowering.',
-      'info',
-      bare,
-    )
-    log(
-      '--rewrite-policy [safe|warn|skip] \t Control specifier rewriting behavior.',
-      'info',
-      bare,
-    )
-    log(
-      '--validate-specifiers \t\t Validate rewritten specifiers against outputs.',
-      'info',
-      bare,
-    )
-    log('--verbose, -V \t\t\t Enable verbose logging.', 'info', bare)
-    log('--help, -h \t\t\t Print this message.', 'info', bare)
+    printHelp()
   } else {
     const {
       project,
@@ -155,6 +209,8 @@ const init = async args => {
       'transform-syntax': transformSyntax,
       'rewrite-policy': rewritePolicy,
       'validate-specifiers': validateSpecifiers,
+      'detect-dual-package-hazard': detectDualPackageHazard,
+      'dual-package-hazard-scope': dualPackageHazardScope,
       verbose,
       mode,
     } = parsed
@@ -238,6 +294,18 @@ const init = async args => {
         return false
       }
 
+      if (!['off', 'warn', 'error'].includes(detectDualPackageHazard)) {
+        logError('--detect-dual-package-hazard expects one of: off | warn | error')
+
+        return false
+      }
+
+      if (!['file', 'project'].includes(dualPackageHazardScope)) {
+        logError('--dual-package-hazard-scope expects one of: file | project')
+
+        return false
+      }
+
       let modulesFinal = modules
       let transformSyntaxFinal = transformSyntax
       const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
@@ -267,6 +335,8 @@ const init = async args => {
         exportsValidate,
         rewritePolicy,
         validateSpecifiers: validateSpecifiersFinal,
+        detectDualPackageHazard,
+        dualPackageHazardScope,
         verbose,
         tsconfig,
         projectDir,

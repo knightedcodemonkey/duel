@@ -15,3 +15,12 @@ Yes. `outDir` controls where Duel (and `tsc`) place emit results. The exclusion 
 ## Can I avoid editing `tsconfig.json`?
 
 You could maintain separate configs (one for emit, one for checking) or lean on project references, but Duel's default workflow assumes a single package-level config. Excluding `dist/` is the simplest, least error-prone way to ensure dual builds, incremental type-checks, and workspace consumers all cooperate.
+
+## How do I detect dual package hazards?
+
+Dual packages can load twice if a project mixes `import` and `require` for the same dependency (especially when conditional exports differ). Use the built-in detector:
+
+- `--detect-dual-package-hazard [off|warn|error]` controls severity (default `warn`; `error` exits non-zero).
+- `--dual-package-hazard-scope [file|project]` scopes diagnostics per file (legacy) or across the compiled source set (recommended for monorepos/hoisted installs).
+
+Project scope runs a pre-pass before builds so hazards surface once per package, even if the conflicting usage spans multiple files.

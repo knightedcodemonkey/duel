@@ -100,6 +100,15 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 
 When `--mode` is enabled, `duel` copies sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc`, so TypeScript sees already-mitigated sources. That pre-`tsc` step is globals-only for `--mode globals` and full lowering for `--mode full`.
 
+### Dual package hazards
+
+Mixed `import`/`require` of the same dual package (especially when conditional exports differ) can create two module instances. `duel` exposes the detector from `@knighted/module`:
+
+- `--detect-dual-package-hazard [off|warn|error]` (default `warn`): emit diagnostics; `error` exits non-zero.
+- `--dual-package-hazard-scope [file|project]` (default `file`): per-file checks or a project-wide pre-pass that aggregates package usage across all compiled sources before building.
+
+Project scope is helpful in monorepos or hoisted installs where hazards surface only when looking across files.
+
 ## Options
 
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
@@ -113,6 +122,8 @@ The available options are limited, because you should define most of them inside
 - `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
 - `--rewrite-policy [safe|warn|skip]` Control how specifier rewrites behave when a matching target is missing (`safe` warns and skips, `warn` rewrites and warns, `skip` leaves specifiers untouched).
 - `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
+- `--detect-dual-package-hazard [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero.
+- `--dual-package-hazard-scope [file|project]` Run hazard checks per file (default) or aggregate across the project.
 - `--verbose, -V` Verbose logging.
 - `--help, -h` Print the help text.
 

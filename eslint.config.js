@@ -55,4 +55,10 @@ export default [
       ],
     },
   },
+  {
+    files: ['test/unit.js'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 ]

@@ -16,12 +16,14 @@ const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const extended = resolve(__dirname, '__fixtures__/extended')
+const dualHazard = resolve(__dirname, '__fixtures__/dualHazard')
 const dualError = resolve(__dirname, '__fixtures__/compileErrorsDual')
 const plainDist = join(plain, 'dist')
 const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const extDist = join(extended, 'dist')
+const hazardDist = join(dualHazard, 'dist')
 const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
 const exportsResDist = join(exportsRes, 'dist')
 const projectRefs = resolve(__dirname, '__fixtures__/projectRefs')
@@ -68,6 +70,7 @@ describe('duel', () => {
     await rmDist(plainDist)
     await rmDist(extDist)
     await rmDist(projectRefsDist)
+    await rmDist(hazardDist)
   })
 
   it('prints options help', async t => {
@@ -107,6 +110,16 @@ describe('duel', () => {
 
     await duel(['-x', '.mjs'])
     assert.ok(logged(spy, 0).startsWith('--target-extension is deprecated'))
+  })
+
+  it('reports errors for invalid dual hazard options', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    await duel(['--dual-package-hazard-scope', 'nope'])
+    assert.ok(logged(spy, 0).includes('--dual-package-hazard-scope expects'))
+
+    await duel(['--detect-dual-package-hazard', 'nope'])
+    assert.ok(logged(spy, 1).includes('--detect-dual-package-hazard expects'))
   })
 
   it('warns when legacy module flags are used', async t => {
@@ -367,6 +380,65 @@ describe('duel', () => {
     assert.equal(cjsStatus, 0)
   })
 
+  it('surfaces project dual package hazards', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    await duel([
+      '-p',
+      dualHazard,
+      '--mode',
+      'globals',
+      '--dual-package-hazard-scope',
+      'project',
+    ])
+
+    const hazards = spy.mock.calls
+      .map((_, i) => logged(spy, i))
+      .filter(line => line.includes('dual-package-mixed-specifiers'))
+
+    assert.ok(hazards.length >= 1)
+    assert.ok(hazards[0].includes('hazard-lib'))
+  })
+
+  it('exits on dual package hazards when requested', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    spyExit.mock.mockImplementation(code => {
+      throw new Error(`process.exit(${code})`)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          dualHazard,
+          '--mode',
+          'globals',
+          '--dual-package-hazard-scope',
+          'project',
+          '--detect-dual-package-hazard',
+          'error',
+        ])
+      },
+      { message: /process\.exit\(1\)/ },
+    )
+
+    const hazards = spy.mock.calls
+      .map((_, i) => logged(spy, i))
+      .filter(line => line.includes('dual-package-mixed-specifiers'))
+
+    assert.ok(hazards.length >= 1)
+  })
+
   it('validates exports-config without writing exports', async t => {
     const pkgPath = resolve(project, 'package.json')
     const originalPkg = await readFile(pkgPath, 'utf8')
@@ -387,6 +459,58 @@ describe('duel', () => {
     const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
 
     assert.ok(!updatedPkg.exports)
+  })
+
+  it('fails on invalid exports-config JSON', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    spyExit.mock.mockImplementation(code => {
+      throw new Error(`process.exit(${code})`)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          'test/__fixtures__/project/tsconfig.json',
+          '--exports-config',
+          'test/__fixtures__/project/exports.invalid.json',
+        ])
+      },
+      { message: /process\.exit\(1\)/ },
+    )
+
+    const messages = spy.mock.calls.map((_, i) => logged(spy, i))
+    assert.ok(messages.some(m => m.includes('Invalid JSON in --exports-config')))
+  })
+
+  it('fails on invalid exports-config entries shape', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    spyExit.mock.mockImplementation(code => {
+      throw new Error(`process.exit(${code})`)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          'test/__fixtures__/project/tsconfig.json',
+          '--exports-config',
+          'test/__fixtures__/project/exports.bad-entries.json',
+        ])
+      },
+      { message: /process\.exit\(1\)/ },
+    )
+
+    const messages = spy.mock.calls.map((_, i) => logged(spy, i))
+    assert.ok(
+      messages.some(m =>
+        m.includes('--exports-config expects an object with an "entries"'),
+      ),
+    )
   })
 
   it('filters exports to configured entries', async t => {
