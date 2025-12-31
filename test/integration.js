@@ -122,16 +122,6 @@ describe('duel', () => {
     assert.ok(logged(spy, 1).includes('--detect-dual-package-hazard expects'))
   })
 
-  it('warns when legacy module flags are used', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    await duel(['-m', '-p', 'test/__fixtures__'])
-    assert.ok(logged(spy, 0).startsWith('--modules is deprecated'))
-
-    await duel(['-s', '-p', 'test/__fixtures__'])
-    assert.ok(logged(spy, 2).startsWith('--transform-syntax is deprecated'))
-  })
-
   it('creates a dual CJS build while transforming module globals', async t => {
     const spy = t.mock.method(global.console, 'log')
 

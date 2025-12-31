@@ -5,7 +5,7 @@ import { stat } from 'node:fs/promises'
 import { parseTsconfig } from 'get-tsconfig'
 import { readPackageUp } from 'read-package-up'
 
-import { logError, log, logWarn } from './util.js'
+import { logError, log } from './util.js'
 
 const cliOptions = [
   {
@@ -19,11 +19,6 @@ const cliOptions = [
     short: 'k',
     value: '[path]',
     desc: 'Directory to start looking for package.json; defaults to --project.',
-  },
-  {
-    long: 'modules',
-    short: 'm',
-    desc: 'Transform module globals for dual build target. (deprecated; use --mode globals/full).',
   },
   {
     long: 'dirs',
@@ -44,11 +39,6 @@ const cliOptions = [
   {
     long: 'exports-validate',
     desc: 'Validate exports without writing.',
-  },
-  {
-    long: 'transform-syntax',
-    short: 's',
-    desc: 'Opt in to full syntax lowering via @knighted/module. (deprecated; use --mode full).',
   },
   {
     long: 'mode',
@@ -128,11 +118,6 @@ const init = async args => {
           type: 'string',
           short: 'k',
         },
-        modules: {
-          type: 'boolean',
-          short: 'm',
-          default: false,
-        },
         dirs: {
           type: 'boolean',
           short: 'd',
@@ -147,11 +132,6 @@ const init = async args => {
         },
         'exports-validate': {
           type: 'boolean',
-          default: false,
-        },
-        'transform-syntax': {
-          type: 'boolean',
-          short: 's',
           default: false,
         },
         'rewrite-policy': {
@@ -201,12 +181,10 @@ const init = async args => {
       project,
       'target-extension': targetExt,
       'pkg-dir': pkgDir,
-      modules,
       dirs,
       exports: exportsOpt,
       'exports-config': exportsConfig,
       'exports-validate': exportsValidate,
-      'transform-syntax': transformSyntax,
       'rewrite-policy': rewritePolicy,
       'validate-specifiers': validateSpecifiers,
       'detect-dual-package-hazard': detectDualPackageHazard,
@@ -214,14 +192,6 @@ const init = async args => {
       verbose,
       mode,
     } = parsed
-
-    if (modules) {
-      logWarn('--modules is deprecated; prefer --mode globals or --mode full.')
-    }
-
-    if (transformSyntax) {
-      logWarn('--transform-syntax is deprecated; prefer --mode full.')
-    }
     let configPath = resolve(project)
     let stats = null
     let pkg = null
@@ -306,8 +276,8 @@ const init = async args => {
         return false
       }
 
-      let modulesFinal = modules
-      let transformSyntaxFinal = transformSyntax
+      let modulesFinal = false
+      let transformSyntaxFinal = false
       const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
 
       if (mode) {
@@ -321,8 +291,6 @@ const init = async args => {
           modulesFinal = true
           transformSyntaxFinal = true
         }
-      } else if (transformSyntax && !modules) {
-        modulesFinal = true
       }
 
       return {

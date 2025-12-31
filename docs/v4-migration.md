@@ -9,6 +9,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 - **Build pipeline runs in a temp workspace copy.** Dual builds no longer mutate the root `package.json`; a temp copy is created with an adjusted `type`. External tools that watched in-place `package.json` edits will see different behavior.
 - **Project references run with `tsc -b`.** When `tsconfig.json` contains references, builds switch to TypeScript build mode. Output shape can differ from `tsc -p` for some setups.
 - **Exports tooling additions.** New flags (`--exports-config`, `--exports-validate`) are available; when used, they can emit warnings or fail on invalid configs.
+- **Deprecated flags removed.** `--modules` and `--transform-syntax` are gone; use `--mode globals` or `--mode full` instead.
 
 ## Restoring v3-like Behavior
 

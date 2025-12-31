@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "3.3.0-rc.0",
+  "version": "4.0.0-rc.0",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
