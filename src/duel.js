@@ -156,6 +156,7 @@ const duel = async args => {
     const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
     const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
     const subDir = join(projectRoot, `_duel_${hash}_`)
+    const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
     const getOverrideTsConfig = () => {
@@ -172,8 +173,8 @@ const duel = async args => {
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
           target: 'ES2022',
-          // Emit dual build directly into the real project outDir (cjs/esm subdir)
-          outDir: absoluteDualOutDir,
+          // Emit dual build into the shadow workspace, then copy to real outDir
+          outDir: shadowDualOutDir,
           incremental: true,
           tsBuildInfoFile: dualTsBuildInfoFile,
         },
@@ -526,6 +527,7 @@ const duel = async args => {
           }
         }
       }
+      const toShadowPath = absPath => join(subDir, relative(projectRoot, absPath))
 
       // Patch referenced tsconfig files in the shadow workspace to emit dual outputs
       const patchReferencedConfigs = async () => {
@@ -549,11 +551,14 @@ const duel = async args => {
           const baseOut = cfg.compilerOptions?.outDir
             ? resolve(cfgDir, cfg.compilerOptions.outDir)
             : resolve(cfgDir, 'dist')
-          const dualOut = join(baseOut, isCjsBuild ? 'cjs' : 'esm')
-          const tsbuild = cfg.compilerOptions?.tsBuildInfoFile
+          const dualOutReal = join(baseOut, isCjsBuild ? 'cjs' : 'esm')
+          const dualOut = toShadowPath(dualOutReal)
+          const tsbuildReal = cfg.compilerOptions?.tsBuildInfoFile
             ? resolve(cfgDir, cfg.compilerOptions.tsBuildInfoFile)
             : join(baseOut, 'tsconfig.tsbuildinfo')
-          const dualTsbuild = join(dirname(tsbuild), 'tsconfig.dual.tsbuildinfo')
+          const dualTsbuild = toShadowPath(
+            join(dirname(tsbuildReal), 'tsconfig.dual.tsbuildinfo'),
+          )
           const patched = {
             ...cfg,
             compilerOptions: {
@@ -602,7 +607,7 @@ const duel = async args => {
               ...tsconfigDual,
               compilerOptions: {
                 ...tsconfigDual.compilerOptions,
-                outDir: absoluteDualOutDir,
+                outDir: shadowDualOutDir,
                 incremental: true,
                 tsBuildInfoFile: dualTsBuildInfoFile,
               },
@@ -659,28 +664,30 @@ const duel = async args => {
 
       // Build dual
       log('Starting dual build...')
-      try {
-        await refreshDualBuildInfo()
-        await runBuild(
-          dualConfigPath,
-          hasReferences ? undefined : absoluteDualOutDir,
-          hasReferences ? undefined : dualTsBuildInfoFile,
-          subDir,
-        )
-      } catch ({ message }) {
-        success = false
-        errorMsg = message
-      } finally {
-        const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
-
-        // Cleanup temp dir unless debugging is requested
+      const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
+      const cleanupTemp = async () => {
         if (!keepTemp) {
           await rm(dualConfigPath, { force: true })
           await rm(subDir, { force: true, recursive: true })
         } else {
           logWarn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
         }
+      }
+      try {
+        await refreshDualBuildInfo()
+        await runBuild(
+          dualConfigPath,
+          hasReferences ? undefined : shadowDualOutDir,
+          hasReferences ? undefined : dualTsBuildInfoFile,
+          subDir,
+        )
+      } catch ({ message }) {
+        success = false
+        errorMsg = message
+      }
 
+      if (!success) {
+        await cleanupTemp()
         if (errorMsg) {
           handleErrorAndExit(errorMsg)
         }
@@ -689,6 +696,17 @@ const duel = async args => {
       if (success) {
         const dualTarget = isCjsBuild ? 'commonjs' : 'module'
         const dualTargetExt = isCjsBuild ? '.cjs' : dirs ? '.js' : '.mjs'
+        await rm(absoluteDualOutDir, { force: true, recursive: true })
+        await mkdir(dirname(absoluteDualOutDir), { recursive: true })
+        // Only copy if the shadow dual outDir was produced; absent indicates a failed emit
+        try {
+          await cp(shadowDualOutDir, absoluteDualOutDir, { recursive: true })
+        } catch (err) {
+          if (err?.code === 'ENOENT') {
+            throw new Error(`Dual build output not found at ${shadowDualOutDir}`)
+          }
+          throw err
+        }
         const filenames = await glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
           {
@@ -737,6 +755,7 @@ const duel = async args => {
           mainDefaultKind,
           mainPath,
         })
+        await cleanupTemp()
         logSuccess(startTime)
       }
     }
