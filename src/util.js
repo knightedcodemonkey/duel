@@ -70,6 +70,7 @@ const getCompileFiles = (tscPath, options = {}) => {
   const root = normalizePath(resolve(workingDir))
   const normalize = candidate =>
     normalizePath(isAbsolute(candidate) ? candidate : resolve(workingDir, candidate))
+  // Normalize casing only on Windows; POSIX stays case-sensitive to match fs semantics.
   const toComparable = path => (platform === 'win32' ? path.toLowerCase() : path)
   const rootComparable = toComparable(root)
   const isInsideRoot = candidate => {
@@ -266,7 +267,7 @@ const generateExports = async options => {
   })
 
   for (const file of esmFiles) {
-    if (/\.d\.(ts|mts)$/i.test(file)) {
+    if (/\.d\.(ts|mts)$/.test(file)) {
       recordPath('types', file, esmRoot)
     } else {
       recordPath('import', file, esmRoot)
@@ -278,7 +279,7 @@ const generateExports = async options => {
   })
 
   for (const file of cjsFiles) {
-    if (/\.d\.(ts|cts)$/i.test(file)) {
+    if (/\.d\.(ts|cts)$/.test(file)) {
       recordPath('types', file, cjsRoot)
     } else {
       recordPath('require', file, cjsRoot)

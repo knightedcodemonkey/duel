@@ -31,7 +31,7 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
     if (isDts) {
       const source = await readFile(filename, 'utf8')
       const rewritten = source.replace(
-        /(?<=["'])(\.\.?(?:\/[\w.-]+)*)\.js(?=["'])/g,
+        /(?<=["'`])(\.\.?(?:\/[\w.-]+)*)\.js(?=["'`])/g,
         `$1${ext}`,
       )
 
@@ -61,7 +61,8 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
         return null
       }
 
-      const next = value.replace(/(.+)\.js([)"'`]*)?$/, `$1${ext}$2`)
+      // Non-greedy to avoid over-consuming on values like "./foo.js.js".
+      const next = value.replace(/(.+?)\.js([)"'`]*)?$/, `$1${ext}$2`)
 
       if (hasTemplate) {
         // Dynamic/template specifiers cannot be validated statically; still rewrite the

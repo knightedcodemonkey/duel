@@ -509,8 +509,15 @@ describe('duel', () => {
       await rmDist(hazardDist)
     })
 
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
     spyExit.mock.mockImplementation(code => {
-      throw new Error(`process.exit(${code})`)
+      throw new ExitError(code)
     })
 
     await assert.rejects(
@@ -524,7 +531,7 @@ describe('duel', () => {
           'error',
         ])
       },
-      { message: /process\.exit\(1\)/ },
+      err => err instanceof ExitError && err.code === 1,
     )
 
     const hazards = spy.mock.calls
@@ -560,8 +567,15 @@ describe('duel', () => {
     const spyExit = t.mock.method(process, 'exit')
     const spy = t.mock.method(global.console, 'log')
 
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
     spyExit.mock.mockImplementation(code => {
-      throw new Error(`process.exit(${code})`)
+      throw new ExitError(code)
     })
 
     await assert.rejects(
@@ -573,7 +587,7 @@ describe('duel', () => {
           'test/__fixtures__/project/exports.invalid.json',
         ])
       },
-      { message: /process\.exit\(1\)/ },
+      err => err instanceof ExitError && err.code === 1,
     )
 
     const messages = spy.mock.calls.map((_, i) => logged(spy, i))
@@ -584,8 +598,15 @@ describe('duel', () => {
     const spyExit = t.mock.method(process, 'exit')
     const spy = t.mock.method(global.console, 'log')
 
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
     spyExit.mock.mockImplementation(code => {
-      throw new Error(`process.exit(${code})`)
+      throw new ExitError(code)
     })
 
     await assert.rejects(
@@ -597,7 +618,7 @@ describe('duel', () => {
           'test/__fixtures__/project/exports.bad-entries.json',
         ])
       },
-      { message: /process\.exit\(1\)/ },
+      err => err instanceof ExitError && err.code === 1,
     )
 
     const messages = spy.mock.calls.map((_, i) => logged(spy, i))
