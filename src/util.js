@@ -123,7 +123,7 @@ const readExportsConfig = async (configPath, pkgDir) => {
     entries.some(item => typeof item !== 'string')
   ) {
     throw new Error(
-      '--exports-config expects an object with an "entries" array of strings',
+      '--exports-config expects a JSON object with an "entries" field that is an array of strings (e.g. { "entries": ["./dist/index.js"] })',
     )
   }
 
