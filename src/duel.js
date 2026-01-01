@@ -141,12 +141,34 @@ const duel = async args => {
         ? join(absoluteOutDir, 'esm')
         : join(absoluteOutDir, 'cjs')
       : absoluteOutDir
+    const {
+      type,
+      exports,
+      imports,
+      main,
+      module,
+      types,
+      typings,
+      typesVersions,
+      sideEffects,
+    } = pkg.packageJson ?? {}
+    const pkgHashInputs = {
+      type,
+      exports,
+      imports,
+      main,
+      module,
+      types,
+      typings,
+      typesVersions,
+      sideEffects,
+    }
     const hash = createHash('sha1')
       .update(
         JSON.stringify({
           configPath,
           tsconfig,
-          packageJson: pkg.packageJson,
+          packageJson: pkgHashInputs,
           dualTarget: isCjsBuild ? 'cjs' : 'esm',
         }),
       )
