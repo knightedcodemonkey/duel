@@ -60,9 +60,6 @@ It should work similarly for a CJS-first project. Except, your package.json file
 > [!IMPORTANT]
 > This works best if your CJS-first project uses file extensions in _relative_ specifiers. That is acceptable in CJS and [required in ESM](https://nodejs.org/api/esm.html#import-specifiers). `duel` does not rewrite bare specifiers or remap relative specifiers to directory indexes.
 
-> [!NOTE]
-> While `duel` runs it briefly swaps in a temporary package.json with the needed `type`; your original file is restored when the build finishes.
-
 ### Build orientation
 
 `duel` infers the primary vs dual build orientation from your `package.json` `type`:
@@ -103,6 +100,15 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 
 When `--mode` is enabled, `duel` copies sources and runs [`@knighted/module`](https://github.com/knightedcodemonkey/module) **before** `tsc`, so TypeScript sees already-mitigated sources. That pre-`tsc` step is globals-only for `--mode globals` and full lowering for `--mode full`.
 
+### Dual package hazards
+
+Mixed `import`/`require` of the same dual package (especially when conditional exports differ) can create two module instances. `duel` exposes the detector from `@knighted/module`:
+
+- `--detect-dual-package-hazard [off|warn|error]` (default `warn`): emit diagnostics; `error` exits non-zero.
+- `--dual-package-hazard-scope [file|project]` (default `file`): per-file checks or a project-wide pre-pass that aggregates package usage across all compiled sources before building.
+
+Project scope is helpful in monorepos or hoisted installs where hazards surface only when looking across files.
+
 ## Options
 
 The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
@@ -112,6 +118,15 @@ The available options are limited, because you should define most of them inside
 - `--mode` Optional shorthand for the module transform mode: `none` (default), `globals` (globals-only), `full` (globals + full syntax lowering).
 - `--dirs, -d` Outputs both builds to directories inside of `outDir`. Defaults to `false`.
 - `--exports, -e` Generate `package.json` `exports` from build output. Values: `wildcard` | `dir` | `name`.
+- `--exports-config` Provide a JSON file with `{ "entries": ["./dist/index.js", ...], "main": "./dist/index.js" }` to limit which outputs become exports.
+- `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
+- `--rewrite-policy [safe|warn|skip]` Control how specifier rewrites behave when a matching target is missing (`safe` warns and skips, `warn` rewrites and warns, `skip` leaves specifiers untouched).
+- `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
+- `--detect-dual-package-hazard [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero.
+- `--dual-package-hazard-scope [file|project]` Run hazard checks per file (default) or aggregate across the project.
+- `--copy-mode [sources|full]` Temp copy strategy. `sources` (default) copies only files participating in the build (plus configs); `full` mirrors the previous whole-project copy.
+- `--verbose, -V` Verbose logging.
+- `--help, -h` Print the help text.
 
 > [!NOTE]
 > Exports keys are extensionless by design; the target `import`/`require`/`types` entries keep explicit file extensions so Node resolution remains deterministic.

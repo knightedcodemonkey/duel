@@ -1,0 +1,4 @@
+{
+  "entries": ["./dist/index.js", "./dist/folder/module.js"],
+  "main": "./dist/index.js"
+}

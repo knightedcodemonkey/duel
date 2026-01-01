@@ -1,0 +1,9 @@
+{
+  "name": "project-refs-app",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "project-refs-lib": "0.0.0",
+    "hoisted": "0.0.0"
+  }
+}

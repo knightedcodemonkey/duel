@@ -18,6 +18,7 @@ export default [
     },
     rules: {
       'no-console': 'error',
+      'no-shadow': 'error',
       'n/no-process-exit': 'off',
       'n/hashbang': [
         'error',
@@ -54,5 +55,14 @@ export default [
         },
       ],
     },
+  },
+  {
+    files: ['test/unit.js'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    ignores: ['test/__fixtures__/projectRefs/packages/**'],
   },
 ]

@@ -7,6 +7,8 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
+import spawn from 'cross-spawn'
+
 import { duel } from '../src/duel.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -16,14 +18,35 @@ const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const extended = resolve(__dirname, '__fixtures__/extended')
+const dualHazard = resolve(__dirname, '__fixtures__/dualHazard')
 const dualError = resolve(__dirname, '__fixtures__/compileErrorsDual')
 const plainDist = join(plain, 'dist')
 const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
 const extDist = join(extended, 'dist')
+const hazardDist = join(dualHazard, 'dist')
 const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
 const exportsResDist = join(exportsRes, 'dist')
+const projectRefs = resolve(__dirname, '__fixtures__/projectRefs')
+const projectRefsDist = join(projectRefs, 'dist')
+let projectRefsInstalled = false
+const itCI = process.env.CI ? it : it.skip
+
+const ensureProjectRefsInstalled = () => {
+  if (projectRefsInstalled) return
+
+  const res = spawn.sync('npm', ['install', '--ignore-scripts', '--no-fund'], {
+    cwd: projectRefs,
+    stdio: 'inherit',
+  })
+
+  if (res.status !== 0) {
+    throw new Error('projectRefs npm install failed')
+  }
+
+  projectRefsInstalled = true
+}
 const errDistDual = join(dualError, 'dist')
 const errDist = resolve(__dirname, '__fixtures__/compileErrors/dist')
 const rmDist = async distPath => {
@@ -65,6 +88,8 @@ describe('duel', () => {
     await rmDist(errDist)
     await rmDist(plainDist)
     await rmDist(extDist)
+    await rmDist(projectRefsDist)
+    await rmDist(hazardDist)
   })
 
   it('prints options help', async t => {
@@ -74,11 +99,18 @@ describe('duel', () => {
     assert.ok(logged(spy, 1).startsWith('Options:'))
   })
 
-  it('reports errors when passing invalid options', async t => {
+  itCI('reports errors when passing invalid options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
     await duel(['--invalid'])
     assert.equal(logged(spy, 0), "Unknown option '--invalid'")
+  })
+
+  itCI('reports errors for invalid copy modes', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    await duel(['--copy-mode', 'nope'])
+    assert.ok(logged(spy, 0).includes('--copy-mode expects'))
   })
 
   it('uses default --project value of "tsconfig.json"', async t => {
@@ -99,21 +131,14 @@ describe('duel', () => {
     assert.ok(logged(spy, 0).endsWith('no tsconfig.json.'))
   })
 
-  it('reports errors when using deprecated --target-extension', async t => {
+  itCI('reports errors for invalid dual hazard options', async t => {
     const spy = t.mock.method(global.console, 'log')
 
-    await duel(['-x', '.mjs'])
-    assert.ok(logged(spy, 0).startsWith('--target-extension is deprecated'))
-  })
+    await duel(['--dual-package-hazard-scope', 'nope'])
+    assert.ok(logged(spy, 0).includes('--dual-package-hazard-scope expects'))
 
-  it('warns when legacy module flags are used', async t => {
-    const spy = t.mock.method(global.console, 'log')
-
-    await duel(['-m', '-p', 'test/__fixtures__'])
-    assert.ok(logged(spy, 0).startsWith('--modules is deprecated'))
-
-    await duel(['-s', '-p', 'test/__fixtures__'])
-    assert.ok(logged(spy, 2).startsWith('--transform-syntax is deprecated'))
+    await duel(['--detect-dual-package-hazard', 'nope'])
+    assert.ok(logged(spy, 1).includes('--detect-dual-package-hazard expects'))
   })
 
   it('creates a dual CJS build while transforming module globals', async t => {
@@ -237,6 +262,20 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(cjsDist, 'esm/index.d.mts')))
   })
 
+  it('builds with full copy mode when requested', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(plainDist)
+    })
+
+    await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--copy-mode', 'full'])
+
+    assert.ok(logged(spy, 2).startsWith('Successfully created a dual CJS build'))
+    assert.ok(existsSync(resolve(plainDist, 'index.js')))
+    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+  })
+
   it('generates exports when requested', async t => {
     const pkgPath = resolve(project, 'package.json')
     const originalPkg = await readFile(pkgPath, 'utf8')
@@ -314,6 +353,308 @@ describe('duel', () => {
     assert.match(folder.require ?? '', /\*\.cjs$/)
     assert.match(folder.types ?? '', /\*\.d\.(ts|mts|cts)$/)
     assert.equal(folder.default, folder.import ?? folder.require)
+  })
+
+  it('builds project references with hoisted deps via temp dir', async t => {
+    const pkgPath = resolve(projectRefs, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(projectRefsDist)
+    })
+
+    ensureProjectRefsInstalled()
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/lib/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/app/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'app', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'app', 'cjs', 'index.cjs')))
+    assert.ok(existsSync(join(projectRefsDist, 'lib', 'index.js')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'app', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'app', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
+  it('builds multi-hop project references (sources copy)', async t => {
+    t.after(async () => {
+      await rmDist(projectRefsDist)
+    })
+
+    ensureProjectRefsInstalled()
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/chain-a/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'chain-a', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-b', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-c', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'chain-a', 'cjs', 'index.cjs')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'chain-a', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'chain-a', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
+  it('honors explicit tsconfig filenames in references', async t => {
+    t.after(async () => {
+      await rmDist(projectRefsDist)
+    })
+
+    ensureProjectRefsInstalled()
+
+    await duel([
+      '-p',
+      'test/__fixtures__/projectRefs/packages/custom-app/tsconfig.json',
+      '--mode',
+      'globals',
+    ])
+
+    assert.ok(existsSync(join(projectRefsDist, 'custom-app', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'custom-lib', 'index.js')))
+    assert.ok(existsSync(join(projectRefsDist, 'custom-app', 'cjs', 'index.cjs')))
+
+    const { status: esmStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'custom-app', 'index.js')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(esmStatus, 0)
+
+    const { status: cjsStatus } = spawnSync(
+      'node',
+      [join(projectRefsDist, 'custom-app', 'cjs', 'index.cjs')],
+      {
+        cwd: projectRefs,
+        stdio: 'inherit',
+      },
+    )
+    assert.equal(cjsStatus, 0)
+  })
+
+  it('surfaces project dual package hazards', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    await duel(['-p', dualHazard, '--dual-package-hazard-scope', 'project'])
+
+    const hazards = spy.mock.calls
+      .map((_, i) => logged(spy, i))
+      .filter(line => line.includes('dual-package-mixed-specifiers'))
+
+    assert.ok(hazards.length >= 1)
+    assert.ok(hazards[0].includes('hazard-lib'))
+  })
+
+  it('exits on dual package hazards when requested', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
+    spyExit.mock.mockImplementation(code => {
+      throw new ExitError(code)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          dualHazard,
+          '--dual-package-hazard-scope',
+          'project',
+          '--detect-dual-package-hazard',
+          'error',
+        ])
+      },
+      err => err instanceof ExitError && err.code === 1,
+    )
+
+    const hazards = spy.mock.calls
+      .map((_, i) => logged(spy, i))
+      .filter(line => line.includes('dual-package-mixed-specifiers'))
+
+    assert.ok(hazards.length >= 1)
+  })
+
+  it('validates exports-config without writing exports', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel([
+      '-p',
+      'test/__fixtures__/project/tsconfig.json',
+      '--exports-config',
+      'test/__fixtures__/project/exports.config.json',
+      '--exports-validate',
+    ])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+
+    assert.ok(!updatedPkg.exports)
+  })
+
+  it('fails on invalid exports-config JSON', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
+    spyExit.mock.mockImplementation(code => {
+      throw new ExitError(code)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          'test/__fixtures__/project/tsconfig.json',
+          '--exports-config',
+          'test/__fixtures__/project/exports.invalid.json',
+        ])
+      },
+      err => err instanceof ExitError && err.code === 1,
+    )
+
+    const messages = spy.mock.calls.map((_, i) => logged(spy, i))
+    assert.ok(messages.some(m => m.includes('Invalid JSON in --exports-config')))
+  })
+
+  it('fails on invalid exports-config entries shape', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spy = t.mock.method(global.console, 'log')
+
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
+    spyExit.mock.mockImplementation(code => {
+      throw new ExitError(code)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel([
+          '-p',
+          'test/__fixtures__/project/tsconfig.json',
+          '--exports-config',
+          'test/__fixtures__/project/exports.bad-entries.json',
+        ])
+      },
+      err => err instanceof ExitError && err.code === 1,
+    )
+
+    const messages = spy.mock.calls.map((_, i) => logged(spy, i))
+    assert.ok(
+      messages.some(m =>
+        m.includes('--exports-config expects an object with an "entries"'),
+      ),
+    )
+  })
+
+  it('filters exports to configured entries', async t => {
+    const pkgPath = resolve(project, 'package.json')
+    const originalPkg = await readFile(pkgPath, 'utf8')
+
+    t.after(async () => {
+      await writeFile(pkgPath, originalPkg)
+      await rmDist(proDist)
+    })
+
+    await duel([
+      '-p',
+      'test/__fixtures__/project/tsconfig.json',
+      '--exports-config',
+      'test/__fixtures__/project/exports.config.json',
+      '--exports',
+      'name',
+    ])
+
+    const updatedPkg = JSON.parse(await readFile(pkgPath, 'utf8'))
+    const exp = updatedPkg.exports
+
+    assert.ok(exp)
+    assert.deepEqual(Object.keys(exp).sort(), ['.', './folder/module', './index'].sort())
+    assert.equal(exp['./folder/module']?.import, './dist/folder/module.js')
+    assert.equal(exp['./folder/module']?.require, './dist/cjs/folder/module.cjs')
+    assert.equal(exp['./folder/module']?.types, './dist/folder/module.d.ts')
   })
 
   it('resolves name exports via node', async t => {

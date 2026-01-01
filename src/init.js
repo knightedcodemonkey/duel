@@ -5,7 +5,102 @@ import { stat } from 'node:fs/promises'
 import { parseTsconfig } from 'get-tsconfig'
 import { readPackageUp } from 'read-package-up'
 
-import { logError, log, logWarn } from './util.js'
+import { logError, log } from './util.js'
+
+const cliOptions = [
+  {
+    long: 'project',
+    short: 'p',
+    value: '[path]',
+    desc: "Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
+  },
+  {
+    long: 'pkg-dir',
+    short: 'k',
+    value: '[path]',
+    desc: 'Directory to start looking for package.json; defaults to --project.',
+  },
+  {
+    long: 'dirs',
+    short: 'd',
+    desc: 'Output both builds to directories inside of outDir. [esm, cjs].',
+  },
+  {
+    long: 'exports',
+    short: 'e',
+    value: '[mode]',
+    desc: 'Generate package.json exports. Values: wildcard | dir | name.',
+  },
+  {
+    long: 'exports-config',
+    value: '[path]',
+    desc: 'Provide explicit exports config file.',
+  },
+  {
+    long: 'exports-validate',
+    desc: 'Validate exports without writing.',
+  },
+  {
+    long: 'mode',
+    value: '[none|globals|full]',
+    desc: 'Optional shorthand for module transforms and syntax lowering.',
+  },
+  {
+    long: 'rewrite-policy',
+    value: '[safe|warn|skip]',
+    desc: 'Control specifier rewriting behavior.',
+  },
+  {
+    long: 'validate-specifiers',
+    desc: 'Validate rewritten specifiers against outputs.',
+  },
+  {
+    long: 'detect-dual-package-hazard',
+    short: 'H',
+    value: '[off|warn|error]',
+    desc: 'Detect mixed import/require use of dual packages.',
+  },
+  {
+    long: 'dual-package-hazard-scope',
+    value: '[file|project]',
+    desc: 'Scope for dual package hazard detection.',
+  },
+  {
+    long: 'verbose',
+    short: 'V',
+    desc: 'Enable verbose logging.',
+  },
+  {
+    long: 'copy-mode',
+    value: '[sources|full]',
+    desc: 'Control temp copy strategy (sources only vs full project).',
+  },
+  {
+    long: 'help',
+    short: 'h',
+    desc: 'Print this message.',
+  },
+]
+
+const printHelp = () => {
+  const bare = { bare: true }
+  const flags = cliOptions.map(opt => {
+    const value = opt.value ? ` ${opt.value}` : ''
+    const short = opt.short ? `-${opt.short}, ` : '    '
+    const long = `--${opt.long}${value}`
+
+    return { flag: `${short}${long}`, desc: opt.desc }
+  })
+  const maxFlag = Math.max(...flags.map(f => f.flag.length))
+
+  log('Usage: duel [options]\n', 'info', bare)
+  log('Options:', 'info', bare)
+
+  for (const { flag, desc } of flags) {
+    const pad = ' '.repeat(Math.max(2, maxFlag - flag.length + 2))
+    log(`${flag}${pad}${desc}`, 'info', bare)
+  }
+}
 
 const init = async args => {
   let parsed = null
@@ -19,19 +114,9 @@ const init = async args => {
           short: 'p',
           default: 'tsconfig.json',
         },
-        'target-extension': {
-          type: 'string',
-          short: 'x',
-          default: '',
-        },
         'pkg-dir': {
           type: 'string',
           short: 'k',
-        },
-        modules: {
-          type: 'boolean',
-          short: 'm',
-          default: false,
         },
         dirs: {
           type: 'boolean',
@@ -42,10 +127,38 @@ const init = async args => {
           type: 'string',
           short: 'e',
         },
-        'transform-syntax': {
+        'exports-config': {
+          type: 'string',
+        },
+        'exports-validate': {
           type: 'boolean',
-          short: 's',
           default: false,
+        },
+        'rewrite-policy': {
+          type: 'string',
+          default: 'safe',
+        },
+        'validate-specifiers': {
+          type: 'boolean',
+          default: false,
+        },
+        'detect-dual-package-hazard': {
+          type: 'string',
+          short: 'H',
+          default: 'warn',
+        },
+        'dual-package-hazard-scope': {
+          type: 'string',
+          default: 'file',
+        },
+        verbose: {
+          type: 'boolean',
+          short: 'V',
+          default: false,
+        },
+        'copy-mode': {
+          type: 'string',
+          default: 'sources',
         },
         mode: {
           type: 'string',
@@ -66,78 +179,29 @@ const init = async args => {
   }
 
   if (parsed.help) {
-    const bare = { bare: true }
-    log('Usage: duel [options]\n', 'info', bare)
-    log('Options:', 'info', bare)
-    log(
-      "--project, -p [path] \t\t Compile the project given the path to its configuration file, or to a folder with a 'tsconfig.json'.",
-      'info',
-      bare,
-    )
-    log(
-      '--pkg-dir, -k [path] \t\t The directory to start looking for a package.json file. Defaults to --project directory.',
-      'info',
-      bare,
-    )
-    log(
-      '--modules, -m \t\t\t Transform module globals for dual build target. Defaults to false. (deprecated; use --mode globals/full).',
-      'info',
-      bare,
-    )
-    log(
-      '--dirs, -d \t\t\t Output both builds to directories inside of outDir. [esm, cjs].',
-      'info',
-      bare,
-    )
-    log(
-      '--exports, -e \t\t\t Generate package.json exports. Values: wildcard | dir | name.',
-      'info',
-      bare,
-    )
-    log(
-      '--transform-syntax, -s \t\t Opt in to full syntax lowering via @knighted/module (default is globals-only). (deprecated; use --mode full).',
-      'info',
-      bare,
-    )
-    log(
-      '--mode [none|globals|full] \t Optional shorthand for module transforms and syntax lowering.',
-      'info',
-      bare,
-    )
-    log('--help, -h \t\t\t Print this message.', 'info', bare)
+    printHelp()
   } else {
     const {
       project,
-      'target-extension': targetExt,
       'pkg-dir': pkgDir,
-      modules,
       dirs,
       exports: exportsOpt,
-      'transform-syntax': transformSyntax,
+      'exports-config': exportsConfig,
+      'exports-validate': exportsValidate,
+      'rewrite-policy': rewritePolicy,
+      'validate-specifiers': validateSpecifiers,
+      'detect-dual-package-hazard': detectDualPackageHazard,
+      'dual-package-hazard-scope': dualPackageHazardScope,
+      verbose,
       mode,
+      'copy-mode': copyMode,
     } = parsed
-
-    if (modules) {
-      logWarn('--modules is deprecated; prefer --mode globals or --mode full.')
-    }
-
-    if (transformSyntax) {
-      logWarn('--transform-syntax is deprecated; prefer --mode full.')
-    }
     let configPath = resolve(project)
     let stats = null
     let pkg = null
 
     if (mode && !['none', 'globals', 'full'].includes(mode)) {
       logError('--mode expects one of: none | globals | full')
-
-      return false
-    }
-
-    if (targetExt) {
-      logError(
-        '--target-extension is deprecated. Define "type" in your package.json instead and the dual build will be inferred from that.',
-      )
 
       return false
     }
@@ -190,8 +254,33 @@ const init = async args => {
         return false
       }
 
-      let modulesFinal = modules
-      let transformSyntaxFinal = transformSyntax
+      if (!['safe', 'warn', 'skip'].includes(rewritePolicy)) {
+        logError('--rewrite-policy expects one of: safe | warn | skip')
+
+        return false
+      }
+
+      if (!['off', 'warn', 'error'].includes(detectDualPackageHazard)) {
+        logError('--detect-dual-package-hazard expects one of: off | warn | error')
+
+        return false
+      }
+
+      if (!['file', 'project'].includes(dualPackageHazardScope)) {
+        logError('--dual-package-hazard-scope expects one of: file | project')
+
+        return false
+      }
+
+      if (!['sources', 'full'].includes(copyMode)) {
+        logError('--copy-mode expects one of: sources | full')
+
+        return false
+      }
+
+      let modulesFinal = false
+      let transformSyntaxFinal = false
+      const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
 
       if (mode) {
         if (mode === 'none') {
@@ -204,8 +293,6 @@ const init = async args => {
           modulesFinal = true
           transformSyntaxFinal = true
         }
-      } else if (transformSyntax && !modules) {
-        modulesFinal = true
       }
 
       return {
@@ -214,6 +301,14 @@ const init = async args => {
         modules: modulesFinal,
         transformSyntax: transformSyntaxFinal,
         exports: exportsOpt,
+        exportsConfig,
+        exportsValidate,
+        rewritePolicy,
+        validateSpecifiers: validateSpecifiersFinal,
+        detectDualPackageHazard,
+        dualPackageHazardScope,
+        verbose,
+        copyMode,
         tsconfig,
         projectDir,
         configPath,

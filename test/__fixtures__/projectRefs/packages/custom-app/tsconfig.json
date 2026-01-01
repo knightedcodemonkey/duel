@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [],
+    "composite": true,
+    "declaration": true,
+    "outDir": "../../dist/custom-app",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "../../dist/custom-app/tsconfig.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [{ "path": "../custom-lib/tsconfig.build.json" }],
+  "exclude": ["../../dist/custom-app"]
+}

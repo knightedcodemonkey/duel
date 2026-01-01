@@ -1,0 +1,8 @@
+{
+  "name": "custom-app",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "custom-lib": "0.0.0"
+  }
+}

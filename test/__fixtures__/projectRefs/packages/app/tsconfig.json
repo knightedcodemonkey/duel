@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "composite": true,
+    "declaration": true,
+    "allowJs": true,
+    "outDir": "../../dist/app",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "../../dist/app/tsconfig.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [{ "path": "../lib" }]
+}

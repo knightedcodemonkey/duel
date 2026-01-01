@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "3.2.5",
+  "version": "4.0.0-rc.0",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -23,9 +23,11 @@
     "prettier": "prettier -w *.js *.md docs/*.md src/*.js test/*.js",
     "prettier:check": "prettier --check --ignore-unknown *.js *.md docs/*.md src/*.js test/*.js",
     "lint": "eslint src/*.js test/*.js",
+    "test:focus": "node --test --test-reporter=spec test/unit.js",
+    "test:unit": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --test --test-reporter=spec test/unit.js",
     "test:integration": "node --test --test-reporter=spec test/integration.js",
     "test:monorepos": "node --test --test-reporter=spec test/monorepos.js",
-    "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --trace-deprecation --test --test-reporter=spec test/integration.js test/monorepos.js",
+    "test": "c8 --reporter=text --reporter=text-summary --reporter=lcov node --trace-deprecation --test --test-reporter=spec test/integration.js test/monorepos.js test/rewritePolicy.js test/unit.js",
     "build": "node src/duel.js --dirs --mode globals",
     "prepack": "npm run build",
     "prepare": "husky"
@@ -83,7 +85,7 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
-    "@knighted/module": "^1.3.1",
+    "@knighted/module": "^1.4.0-rc.2",
     "find-up": "^8.0.0",
     "get-tsconfig": "^4.13.0",
     "glob": "^13.0.0",
@@ -91,7 +93,7 @@
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,cts,mts,jsx,tsx}": [
-      "eslint --max-warnings=0",
+      "eslint --max-warnings=0 --no-warn-ignored",
       "prettier --check --ignore-unknown"
     ],
     "*.{md,json,yml,yaml}": [
