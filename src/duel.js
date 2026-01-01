@@ -803,11 +803,16 @@ const getCurrentHref = () => {
 }
 
 const runIfEntry = async () => {
-  const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1] ?? '')
-  const currentHref = getCurrentHref()
+  try {
+    const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1] ?? '')
+    const currentHref = getCurrentHref()
 
-  if (currentHref && currentHref === realFileUrlArgv1) {
-    await duel()
+    if (currentHref && currentHref === realFileUrlArgv1) {
+      await duel()
+    }
+  } catch (err) {
+    logError(err?.message ?? err)
+    process.exit(1)
   }
 }
 
