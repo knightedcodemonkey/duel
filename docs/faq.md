@@ -24,3 +24,29 @@ Dual packages can load twice if a project mixes `import` and `require` for the s
 - `--dual-package-hazard-scope [file|project]` scopes diagnostics per file (legacy) or across the compiled source set (recommended for monorepos/hoisted installs).
 
 Project scope runs a pre-pass before builds so hazards surface once per package, even if the conflicting usage spans multiple files.
+
+## Why might Duel fall back to unbounded source paths on Windows?
+
+Duel filters TypeScript source paths to prefer files inside your project root. On Windows, certain edge cases in path normalization can cause all paths to be incorrectly filtered out, triggering a fallback to the full unbounded list. Known scenarios include:
+
+### Extended-length / UNC-style paths
+
+`tsc` may emit paths like `\\?\C:\repo\src\file.ts` while `resolve(workingDir)` yields `C:\repo`. After normalization, these can still differ at the prefix level (`\\?\C:\repo` vs `C:\repo`), causing the root-matching logic to fail and filter out valid paths.
+
+### Junctions / symlinked working directories
+
+If your working directory is a junction or symlink (e.g., `C:\link-to-repo`) but `tsc` prints the real path (e.g., `C:\repo`), the normalized root and file paths won't share the same prefix. Every candidate fails the root check, leaving `insideRoot` empty.
+
+### Mixed drive/root representations
+
+Historically, tools can prepend UNC-style prefixes or vary drive letter formatting in ways that survive normalization. These differences make the string-prefix comparison too strict, dropping otherwise valid source files.
+
+### Debugging the fallback
+
+If you encounter this fallback in practice and need to debug it:
+
+1. Add temporary logging to compare the normalized `root` value with a sample of paths from `allPaths`.
+2. Look for mismatched prefixes such as `\\?\C:\` vs `C:\`, or junction vs realpath differences.
+3. Consider using the real path consistently (via `fs.realpathSync`) if your workflow involves symlinks or junctions.
+
+The fallback ensures real source files aren't silently dropped, but understanding the root cause can help you avoid the edge case entirely.

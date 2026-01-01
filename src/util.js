@@ -91,8 +91,8 @@ const getCompileFiles = (tscPath, options = {}) => {
     .filter(path => !isNodeModules(path))
   const insideRoot = allPaths.filter(isInsideRoot)
 
-  // Prefer paths within the project root; if normalization issues drop them all (Windows edge),
-  // fall back to the unbounded list to avoid losing real source files.
+  // Prefer paths within the project root. On Windows, edge cases (UNC paths, junctions, etc.)
+  // can cause all paths to be filtered out. Fall back to unbounded list. See docs/faq.md.
   return insideRoot.length ? insideRoot : allPaths
 }
 const stripKnownExt = path => {
