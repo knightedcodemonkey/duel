@@ -90,15 +90,15 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
         })
 
         if (!exists) {
-          const target = `${collapsed} -> ${base}{${exts.join(',')}}`
+          const missingTargetMessage = `${collapsed} -> ${base}{${exts.join(',')}}`
 
           if (rewritePolicy === 'safe') {
-            onWarn(`Skipped rewrite for missing target: ${target}`)
+            onWarn(`Skipped rewrite for missing target: ${missingTargetMessage}`)
             return null
           }
 
           if (rewritePolicy === 'warn') {
-            onWarn(`Rewriting specifier with missing target: ${target}`)
+            onWarn(`Rewriting specifier with missing target: ${missingTargetMessage}`)
           }
         }
       }

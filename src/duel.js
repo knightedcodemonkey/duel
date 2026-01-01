@@ -94,21 +94,21 @@ const duel = async args => {
     )
 
     const runBuild = (project, outDir) => {
-      return new Promise((resolve, reject) => {
+      return new Promise((fulfill, reject) => {
         const useBuildMode = hasReferences
-        const args = useBuildMode
+        const tsArgs = useBuildMode
           ? [tsc, '-b', project]
           : outDir
             ? [tsc, '-p', project, '--outDir', outDir]
             : [tsc, '-p', project]
-        const build = spawn(process.execPath, args, { stdio: 'inherit' })
+        const build = spawn(process.execPath, tsArgs, { stdio: 'inherit' })
 
         build.on('exit', code => {
           if (code > 0) {
             return reject(new Error(code))
           }
 
-          resolve(code)
+          fulfill(code)
         })
       })
     }
