@@ -94,7 +94,7 @@ const duel = async args => {
     )
 
     const runBuild = (project, outDir) => {
-      return new Promise((fulfill, reject) => {
+      return new Promise((fulfill, rejectBuild) => {
         const useBuildMode = hasReferences
         const tsArgs = useBuildMode
           ? [tsc, '-b', project]
@@ -105,7 +105,7 @@ const duel = async args => {
 
         build.on('exit', code => {
           if (code > 0) {
-            return reject(new Error(code))
+            return rejectBuild(new Error(code))
           }
 
           fulfill(code)
@@ -194,7 +194,11 @@ const duel = async args => {
 
       logVerbose(`Root tsconfig references: ${JSON.stringify(tsconfig.references ?? [])}`)
 
-      // Depth-first is fine here because we collect into sets; order is irrelevant.
+      /*
+       * Depth-first traversal (LIFO via pop) is acceptable here because results
+       * are collected into Sets where order is irrelevant. What matters is that
+       * all configs are visited, not the order in which they're processed.
+       */
       while (queue.length) {
         const current = queue.pop()
         const absConfig = resolve(current.configPath)
