@@ -192,7 +192,7 @@ const duel = async args => {
     }
     const refreshDualBuildInfo = async () => {
       try {
-        await access(absoluteDualOutDir)
+        await access(shadowDualOutDir)
       } catch {
         await rm(dualTsBuildInfoFile, { force: true })
       }
@@ -539,7 +539,10 @@ const duel = async args => {
           let parsed = null
           try {
             parsed = parseTsconfig(dest)
-          } catch {
+          } catch (err) {
+            logWarn(
+              `Skipping referenced tsconfig at ${dest} (parse failed): ${err?.message ?? err}`,
+            )
             continue
           }
 
@@ -566,7 +569,7 @@ const duel = async args => {
               module: 'NodeNext',
               moduleResolution: 'NodeNext',
               outDir: dualOut,
-              incremental: true,
+              incremental: cfg.compilerOptions?.incremental ?? true,
               tsBuildInfoFile: dualTsbuild,
             },
           }
