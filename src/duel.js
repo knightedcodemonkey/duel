@@ -179,7 +179,7 @@ const duel = async args => {
           ...(tsconfig.compilerOptions ?? {}),
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
-          target: 'ES2022',
+          target: tsconfig.compilerOptions?.target ?? 'ES2022',
           // Emit dual build into the shadow workspace, then copy to real outDir
           outDir: shadowDualOutDir,
           incremental: true,
