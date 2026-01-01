@@ -6,6 +6,9 @@
 
 Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) with TypeScript. Supports CommonJS and ES module projects.
 
+> [!NOTE]
+> I wish this tool were unnecessary, but dual emit was declared out of scope by the TypeScript team, so `duel` exists to fill that gap.
+
 ## Features
 
 - Bidirectional ESM ↔️ CJS dual builds inferred from the package.json `type`.
