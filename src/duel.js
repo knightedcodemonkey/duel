@@ -370,10 +370,7 @@ const duel = async args => {
       await maybeLinkNodeModules(projectRoot, subDir)
       const projectRel = relative(projectRoot, projectDir)
       const projectCopyDest = join(subDir, projectRel)
-
-      if (copyMode === 'full') {
-        const allowDist = hasReferences
-
+      const copyProjectTree = async allowDist => {
         await cp(projectDir, projectCopyDest, {
           recursive: true,
           filter: src =>
@@ -394,6 +391,12 @@ const duel = async args => {
             })
           }
         }
+      }
+
+      if (copyMode === 'full') {
+        const allowDist = hasReferences
+
+        await copyProjectTree(allowDist)
       } else {
         const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
 
@@ -436,24 +439,7 @@ const duel = async args => {
         if (missingConfig) {
           const allowDist = hasReferences
 
-          await cp(projectDir, projectCopyDest, {
-            recursive: true,
-            filter: src =>
-              !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
-          })
-
-          for (const ref of tsconfig.references ?? []) {
-            if (!ref.path) continue
-            const refAbs = resolve(projectDir, ref.path)
-            const refRel = relative(projectRoot, refAbs)
-            const refDest = join(subDir, refRel)
-
-            await cp(refAbs, refDest, {
-              recursive: true,
-              filter: src =>
-                !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
-            })
-          }
+          await copyProjectTree(allowDist)
         }
       }
 
