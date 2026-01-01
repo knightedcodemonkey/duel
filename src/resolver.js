@@ -52,8 +52,8 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
       const collapsed = value.replace(/['"`+)\s]|new String\(/g, '')
       const hasTemplate = value.includes('${')
 
-      // Only consider relative specifiers and .js endings.
-      if (!/^(?:\.|\.\.)\//.test(collapsed) || !/\.js$/.test(collapsed)) {
+      // Only consider relative specifiers (POSIX or Windows) and .js endings.
+      if (!/^\.{1,2}[\\/]/.test(collapsed) || !/\.js$/.test(collapsed)) {
         return null
       }
 

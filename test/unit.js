@@ -111,7 +111,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.ok(exportsMap['.'])
@@ -142,7 +142,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     const entry = exportsMap['./foo/*']
@@ -173,7 +173,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     const entry = exportsMap['./bar/*']
@@ -204,7 +204,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: ['./dist/cjs/baz/index.js'],
-      validateOnly: true,
+      dryRun: true,
     })
 
     const entry = exportsMap['./baz/index']
@@ -234,7 +234,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: './dist/index.js',
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.equal(exportsMap['.'].import, './dist/index.js')
@@ -261,7 +261,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'require',
       mainPath: './dist/index.js',
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.equal(exportsMap['.'].require, './dist/index.js')
@@ -337,7 +337,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     const entry = exportsMap['./foo/*']
@@ -369,7 +369,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: ['./dist/esm/foo/index.js'],
-      validateOnly: true,
+      dryRun: true,
     })
 
     const entry = exportsMap['./foo/index']
@@ -398,7 +398,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: ['./dist/cjs/only.js'],
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.deepEqual(exportsMap, {})
@@ -425,7 +425,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.ok(exportsMap['.'])
@@ -454,7 +454,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: null,
       entries: null,
-      validateOnly: true,
+      dryRun: true,
     })
 
     assert.equal(exportsMap['.'].types, './dist/esm/foo/index.d.ts')
@@ -482,7 +482,7 @@ describe('duel internals', () => {
       mainDefaultKind: 'import',
       mainPath: './dist/index.js',
       entries: null,
-      validateOnly: false,
+      dryRun: false,
     })
 
     const updated = JSON.parse(readFileSync(pkgPath, 'utf8'))

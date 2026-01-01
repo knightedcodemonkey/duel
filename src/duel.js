@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { argv } from 'node:process'
-import { join, dirname, resolve, relative, sep } from 'node:path'
+import { join, dirname, resolve, relative, sep, normalize } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, mkdir, cp, access } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
@@ -375,11 +375,23 @@ const duel = async args => {
       await maybeLinkNodeModules(projectRoot, subDir)
       const projectRel = relative(projectRoot, projectDir)
       const projectCopyDest = join(subDir, projectRel)
+      const makeCopyFilter = (rootDir, allowDist) => src => {
+        if (src.split(/[/\\]/).includes('node_modules')) return false
+
+        if (allowDist) return true
+
+        const rel = relative(rootDir, src)
+
+        if (rel.startsWith('..')) return true
+
+        const [segment] = rel.split(sep)
+
+        return segment !== outDir
+      }
       const copyProjectTree = async allowDist => {
         await cp(projectDir, projectCopyDest, {
           recursive: true,
-          filter: src =>
-            !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+          filter: makeCopyFilter(projectDir, allowDist),
         })
 
         if (hasReferences) {
@@ -391,8 +403,7 @@ const duel = async args => {
 
             await cp(refAbs, refDest, {
               recursive: true,
-              filter: src =>
-                !/\bnode_modules\b/.test(src) && (allowDist || !/\bdist\b/.test(src)),
+              filter: makeCopyFilter(refAbs, allowDist),
             })
           }
         }
@@ -407,9 +418,10 @@ const duel = async args => {
 
         for (const file of filesToCopy) {
           let rel = relative(projectRoot, file)
+          rel = normalize(rel)
 
           if (rel.startsWith('..')) {
-            const altRel = hasReferences ? relative(parentRoot, file) : rel
+            const altRel = hasReferences ? normalize(relative(parentRoot, file)) : rel
 
             if (!altRel.startsWith('..')) {
               rel = altRel
@@ -425,7 +437,7 @@ const duel = async args => {
           await cp(file, dest)
         }
 
-        let missingConfig = false
+        const missingConfigs = []
 
         for (const configFile of configFiles) {
           const dest = join(subDir, relative(projectRoot, configFile))
@@ -433,18 +445,21 @@ const duel = async args => {
           try {
             await access(dest)
           } catch {
-            missingConfig = true
-            logWarn(
-              `Falling back to full copy; missing referenced config ${configFile} in temp workspace.`,
-            )
-            break
+            missingConfigs.push({ src: configFile, dest })
           }
         }
 
-        if (missingConfig) {
-          const allowDist = hasReferences
+        if (missingConfigs.length) {
+          logWarn(
+            `Copying ${missingConfigs.length} missing referenced config(s) into temp workspace: ${missingConfigs
+              .map(entry => entry.src)
+              .join(', ')}`,
+          )
 
-          await copyProjectTree(allowDist)
+          for (const { src, dest } of missingConfigs) {
+            await mkdir(dirname(dest), { recursive: true })
+            await cp(src, dest)
+          }
         }
       }
 

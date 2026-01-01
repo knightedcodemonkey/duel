@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url'
 import { realpath, readFile, writeFile, symlink } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { cwd, platform } from 'node:process'
 import {
@@ -52,12 +53,19 @@ const getRealPathAsFileUrl = async path => {
 
   return asFileUrl
 }
+// Backward compatibility: `options` may be a string (cwd) or an object with { cwd, project }.
 const getCompileFiles = (tscPath, options = {}) => {
   const { cwd: workingDir = cwd(), project = null } =
     typeof options === 'string' ? { cwd: options, project: null } : options
   const args = [tscPath]
 
   if (project) {
+    const projectPath = isAbsolute(project) ? project : resolve(workingDir, project)
+
+    if (!existsSync(projectPath)) {
+      throw new Error(`Project path not found: ${project}`)
+    }
+
     args.push('-p', project)
   }
 
@@ -159,8 +167,17 @@ const getSubpath = (mode, relFromRoot) => {
   return null
 }
 const generateExports = async options => {
-  const { mode, pkg, pkgDir, esmRoot, cjsRoot, mainDefaultKind, mainPath, entries } =
-    options
+  const {
+    mode,
+    pkg,
+    pkgDir,
+    esmRoot,
+    cjsRoot,
+    mainDefaultKind,
+    mainPath,
+    entries,
+    dryRun,
+  } = options
   const toPosix = path => path.replace(/\\/g, '/')
   const esmRootPosix = toPosix(esmRoot)
   const cjsRootPosix = toPosix(cjsRoot)
@@ -347,7 +364,7 @@ const generateExports = async options => {
     const firstNonWildcard = [...subpathMap.entries()].find(([key]) => !key.includes('*'))
 
     if (firstNonWildcard) {
-      const [subpath, entry] = firstNonWildcard
+      const [, entry] = firstNonWildcard
       const out = {}
 
       if (entry.types) {
@@ -371,17 +388,12 @@ const generateExports = async options => {
 
       if (Object.keys(out).length) {
         exportsMap['.'] = out
-
-        /* c8 ignore next 3 -- subpath is always set above; keep as guard */
-        if (!exportsMap[subpath]) {
-          exportsMap[subpath] = out
-        }
       }
     }
   }
 
   if (Object.keys(exportsMap).length) {
-    if (options.validateOnly) {
+    if (dryRun) {
       return { exportsMap }
     }
 
@@ -444,7 +456,9 @@ const runExportsValidationBlock = async options => {
   }
 
   if (exportsValidate && !exportsOpt && !exportsConfigData) {
-    logWarnFn('--exports-validate has no effect without --exports or --exports-config')
+    logWarnFn(
+      '--exports-validate has no effect without --exports or --exports-config; no exports will be written.',
+    )
   }
 
   const result = await generateExportsFn({
@@ -456,16 +470,11 @@ const runExportsValidationBlock = async options => {
     mainDefaultKind,
     mainPath: exportsConfigData?.main ?? mainPath,
     entries: exportsConfigData?.entries,
-    validateOnly: exportsValidate,
+    dryRun: exportsValidate,
   })
 
   if (exportsValidate) {
     logFn('Exports validation successful.')
-    if (!exportsOpt && !exportsConfigData) {
-      logWarnFn(
-        'No exports were written; use --exports or --exports-config to emit exports.',
-      )
-    }
   }
 
   return result
