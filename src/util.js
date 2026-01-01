@@ -457,7 +457,7 @@ const runExportsValidationBlock = async options => {
 
   if (exportsValidate && !exportsOpt && !exportsConfigData) {
     logWarnFn(
-      '--exports-validate has no effect without --exports or --exports-config; no exports will be written.',
+      '--exports-validate has no effect without --exports or --exports-config; No exports were written.',
     )
   }
 
