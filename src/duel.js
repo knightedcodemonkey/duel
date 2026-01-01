@@ -194,9 +194,11 @@ const duel = async args => {
 
       logVerbose(`Root tsconfig references: ${JSON.stringify(tsconfig.references ?? [])}`)
 
-      // Depth-first traversal (LIFO via pop) is acceptable here because results
-      // are collected into Sets where order is irrelevant. What matters is that
-      // all configs are visited, not the order in which they're processed.
+      /*
+       * Depth-first traversal (LIFO via pop) is acceptable here because results
+       * are collected into Sets where order is irrelevant. What matters is that
+       * all configs are visited, not the order in which they're processed.
+       */
       while (queue.length) {
         const current = queue.pop()
         const absConfig = resolve(current.configPath)
