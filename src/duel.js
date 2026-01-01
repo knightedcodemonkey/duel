@@ -194,6 +194,7 @@ const duel = async args => {
 
       logVerbose(`Root tsconfig references: ${JSON.stringify(tsconfig.references ?? [])}`)
 
+      // Depth-first is fine here because we collect into sets; order is irrelevant.
       while (queue.length) {
         const current = queue.pop()
         const absConfig = resolve(current.configPath)
