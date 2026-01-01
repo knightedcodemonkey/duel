@@ -181,17 +181,26 @@ const duel = async args => {
     const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
-    const getOverrideTsConfig = dualConfigDir => {
-      const shadowReferences = (tsconfig.references ?? []).map(ref => {
+    function mapReferencesToShadow(references = [], options) {
+      const { resolveRefPath, toShadowPathFn, fromDir } = options
+
+      return references.map(ref => {
         if (!ref?.path) return ref
 
-        const refAbs = resolve(projectDir, ref.path)
-        const shadowRef = join(subDir, relative(projectRoot, refAbs))
+        const refAbs = resolveRefPath(ref.path)
+        const shadowRef = toShadowPathFn(refAbs)
 
         return {
           ...ref,
-          path: relative(dualConfigDir, shadowRef),
+          path: relative(fromDir, shadowRef),
         }
+      })
+    }
+    const getOverrideTsConfig = dualConfigDir => {
+      const shadowReferences = mapReferencesToShadow(tsconfig.references ?? [], {
+        resolveRefPath: refPath => resolve(projectDir, refPath),
+        toShadowPathFn: abs => join(subDir, relative(projectRoot, abs)),
+        fromDir: dualConfigDir,
       })
 
       return {
@@ -591,8 +600,14 @@ const duel = async args => {
           const dualTsbuild = toShadowPath(
             join(dirname(tsbuildReal), 'tsconfig.dual.tsbuildinfo'),
           )
+          const shadowReferences = mapReferencesToShadow(cfg.references ?? [], {
+            resolveRefPath: refPath => resolveReferenceConfigPath(cfgDir, refPath),
+            toShadowPathFn: toShadowPath,
+            fromDir: dirname(dest),
+          })
           const patched = {
             ...cfg,
+            references: shadowReferences,
             compilerOptions: {
               ...(cfg.compilerOptions ?? {}),
               module: 'NodeNext',
@@ -774,7 +789,8 @@ const duel = async args => {
           await rewriteSpecifiersAndExtensions(primaryFiles, {
             target: 'commonjs',
             ext: '.cjs',
-            syntaxMode: rewriteSyntaxMode,
+            // Always lower syntax for primary CJS output when dirs mode rewrites primary build.
+            syntaxMode: true,
             rewritePolicy,
             validateSpecifiers,
             onWarn: message => logWarn(message),
