@@ -159,15 +159,22 @@ const duel = async args => {
     const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
-    const getOverrideTsConfig = () => {
-      const absoluteReferences = (tsconfig.references ?? []).map(ref => ({
-        ...ref,
-        path: ref?.path ? resolve(projectDir, ref.path) : ref?.path,
-      }))
+    const getOverrideTsConfig = dualConfigDir => {
+      const shadowReferences = (tsconfig.references ?? []).map(ref => {
+        if (!ref?.path) return ref
+
+        const refAbs = resolve(projectDir, ref.path)
+        const shadowRef = join(subDir, relative(projectRoot, refAbs))
+
+        return {
+          ...ref,
+          path: relative(dualConfigDir, shadowRef),
+        }
+      })
 
       return {
         ...tsconfig,
-        references: absoluteReferences,
+        references: shadowReferences,
         compilerOptions: {
           ...(tsconfig.compilerOptions ?? {}),
           module: 'NodeNext',
@@ -377,7 +384,6 @@ const duel = async args => {
 
     if (success) {
       const parentRoot = dirname(projectRoot)
-      const tsconfigDual = getOverrideTsConfig()
       const tsconfigRel = relative(projectRoot, configPath)
       const tsconfigDualRel = tsconfigRel.replace(
         /tsconfig\.json$/i,
@@ -385,6 +391,7 @@ const duel = async args => {
       )
       const dualConfigPath = join(subDir, tsconfigDualRel)
       const dualConfigDir = dirname(dualConfigPath)
+      const tsconfigDual = getOverrideTsConfig(dualConfigDir)
       let errorMsg = ''
 
       let exportsConfigData = null
