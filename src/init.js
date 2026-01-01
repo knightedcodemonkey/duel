@@ -216,7 +216,10 @@ const init = async args => {
       return false
     }
 
-    pkg = await readPackageUp({ cwd: pkgDir ?? configPath })
+    const pkgSearchCwd =
+      pkgDir ?? (stats.isDirectory() ? configPath : dirname(configPath))
+
+    pkg = await readPackageUp({ cwd: pkgSearchCwd })
 
     if (!pkg) {
       logError('No package.json file found.')
