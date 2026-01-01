@@ -621,8 +621,16 @@ const duel = async args => {
           pkgDest,
           JSON.stringify(
             {
-              ...pkg.packageJson,
+              name: pkg.packageJson?.name,
+              version: pkg.packageJson?.version,
               type: isCjsBuild ? 'commonjs' : 'module',
+              exports: pkg.packageJson?.exports,
+              imports: pkg.packageJson?.imports,
+              main: pkg.packageJson?.main,
+              module: pkg.packageJson?.module,
+              types: pkg.packageJson?.types ?? pkg.packageJson?.typings,
+              typesVersions: pkg.packageJson?.typesVersions,
+              sideEffects: pkg.packageJson?.sideEffects,
             },
             null,
             2,
@@ -745,11 +753,12 @@ const duel = async args => {
             ignore: 'node_modules/**',
           },
         )
+        const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
 
         await rewriteSpecifiersAndExtensions(filenames, {
           target: dualTarget,
           ext: dualTargetExt,
-          syntaxMode,
+          syntaxMode: rewriteSyntaxMode,
           rewritePolicy,
           validateSpecifiers,
           onWarn: message => logWarn(message),
@@ -765,7 +774,7 @@ const duel = async args => {
           await rewriteSpecifiersAndExtensions(primaryFiles, {
             target: 'commonjs',
             ext: '.cjs',
-            syntaxMode,
+            syntaxMode: rewriteSyntaxMode,
             rewritePolicy,
             validateSpecifiers,
             onWarn: message => logWarn(message),
