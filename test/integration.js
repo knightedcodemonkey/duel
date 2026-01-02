@@ -211,6 +211,7 @@ describe('duel', () => {
 
     const cjs = await readFile(resolve(modesDist, 'cjs/index.cjs'), 'utf8')
     assert.ok(!cjs.includes('import.meta'))
+    // This is lowered due to ES2019 target in modes tsconfig.json
     assert.ok(!cjs.includes('?.'))
   })
 

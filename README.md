@@ -90,7 +90,7 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 `tsc` is asymmetric: `import.meta` globals fail in a CJS-targeted build, but CommonJS globals like `__filename`/`__dirname` pass when targeting ESM, causing runtime errors in the compiled output. See [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658). Use `--mode` to mitigate:
 
 - `--mode globals` [rewrites module globals](https://github.com/knightedcodemonkey/module/blob/main/docs/globals-only.md#rewrites-at-a-glance).
-- `--mode full` adds syntax lowering _in addition to_ the globals rewrite.
+- `--mode full` adds syntax lowering _in addition to_ the globals rewrite. TS sources keep a pre-`tsc` guard (`transformSyntax: "globals-only"`) so TypeScript controls declaration emit; JS/JSX and the dual CJS rewrite path are fully lowered. See the [mode matrix](docs/mode-matrix.md) for details.
 
 ```json
 "scripts": {
