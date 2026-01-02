@@ -179,7 +179,7 @@ const duel = async args => {
     const cacheDir = join(projectRoot, '.duel-cache')
     const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
     const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
-    const subDir = join(projectRoot, `_duel_${hash}_`)
+    const subDir = join(cacheDir, `_duel_${hash}_`)
     const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
@@ -691,13 +691,14 @@ const duel = async args => {
         const toTransform = await glob(
           `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
           {
-            ignore: 'node_modules/**',
+            ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
         )
 
         let transformDiagnosticsError = false
 
         for (const file of toTransform) {
+          if (file.split(/[/\\]/).includes('node_modules')) continue
           const isTsLike = /\.[cm]?tsx?$/.test(file)
           const transformSyntaxMode =
             syntaxMode === true && isTsLike ? 'globals-only' : syntaxMode
@@ -767,7 +768,7 @@ const duel = async args => {
         const filenames = await glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
-            ignore: 'node_modules/**',
+            ignore: `${absoluteDualOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
         )
         const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
@@ -785,7 +786,9 @@ const duel = async args => {
         if (dirs && originalType === 'commonjs') {
           const primaryFiles = await glob(
             `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
-            { ignore: 'node_modules/**' },
+            {
+              ignore: `${primaryOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
+            },
           )
 
           await rewriteSpecifiersAndExtensions(primaryFiles, {
