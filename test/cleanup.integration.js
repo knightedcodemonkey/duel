@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 
 const makeTmp = () => mkdtempSync(join(os.tmpdir(), 'duel-cleanup-integration-'))
@@ -32,9 +33,10 @@ describe('cleanup integration (guarded)', () => {
       registerCleanupHandlers(cleanupTempSync);
       process.exit(0);
     `
+    const cwd = fileURLToPath(new URL('..', import.meta.url))
     const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
       stdio: 'inherit',
-      cwd: new URL('..', import.meta.url).pathname,
+      cwd,
     })
 
     assert.equal(result.status, 0)
