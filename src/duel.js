@@ -26,6 +26,8 @@ import {
   exitOnDiagnostics,
   maybeLinkNodeModules,
   runExportsValidationBlock,
+  createTempCleanup,
+  registerCleanupHandlers,
 } from './util.js'
 
 import { rewriteSpecifiersAndExtensions } from './resolver.js'
@@ -423,8 +425,15 @@ const duel = async args => {
       const dualConfigPath = join(subDir, tsconfigDualRel)
       const dualConfigDir = dirname(dualConfigPath)
       const tsconfigDual = getOverrideTsConfig(dualConfigDir)
+      const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
+      const { cleanupTemp, cleanupTempSync } = createTempCleanup({
+        subDir,
+        dualConfigPath,
+        keepTemp,
+        logWarnFn: logWarn,
+      })
+      const unregisterCleanupHandlers = registerCleanupHandlers(cleanupTempSync)
       let errorMsg = ''
-
       let exportsConfigData = null
 
       if (exportsConfig) {
@@ -719,15 +728,6 @@ const duel = async args => {
 
       // Build dual
       log('Starting dual build...')
-      const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
-      const cleanupTemp = async () => {
-        if (!keepTemp) {
-          await rm(dualConfigPath, { force: true })
-          await rm(subDir, { force: true, recursive: true })
-        } else {
-          logWarn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
-        }
-      }
       try {
         await refreshDualBuildInfo()
         await runBuild(
@@ -743,6 +743,11 @@ const duel = async args => {
 
       if (!success) {
         await cleanupTemp()
+        try {
+          unregisterCleanupHandlers()
+        } catch {
+          /* ignore */
+        }
         if (errorMsg) {
           handleErrorAndExit(errorMsg)
         }
@@ -815,6 +820,11 @@ const duel = async args => {
           mainPath,
         })
         await cleanupTemp()
+        try {
+          unregisterCleanupHandlers()
+        } catch {
+          /* ignore */
+        }
         logSuccess(startTime)
       }
     }
