@@ -54,11 +54,17 @@ const createTempCleanup = ({
   logWarnFn = logWarn,
 }) => {
   let cleaned = false
+  let cleanupPromise = null
+
+  // Marks cleanup as started; returns false when already running or completed.
+  const beginCleanup = () => {
+    if (cleaned) return false
+    cleaned = true
+    return true
+  }
 
   const cleanupTempSync = () => {
-    if (cleaned) return
-
-    cleaned = true
+    if (!beginCleanup()) return
 
     if (keepTemp) {
       logWarnFn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
@@ -80,20 +86,32 @@ const createTempCleanup = ({
     }
   }
   const cleanupTemp = async () => {
-    if (cleaned) return
+    if (cleanupPromise) return cleanupPromise
 
-    cleaned = true
+    cleanupPromise = (async () => {
+      if (!beginCleanup()) return
 
-    if (keepTemp) {
-      logWarnFn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
-      return
-    }
+      if (keepTemp) {
+        logWarnFn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
+        return
+      }
 
-    if (dualConfigPath) {
-      await rm(dualConfigPath, { force: true })
-    }
+      try {
+        if (dualConfigPath) {
+          await rm(dualConfigPath, { force: true })
+        }
+      } catch {
+        /* ignore */
+      }
 
-    await rm(subDir, { force: true, recursive: true })
+      try {
+        await rm(subDir, { force: true, recursive: true })
+      } catch {
+        /* ignore */
+      }
+    })()
+
+    return cleanupPromise
   }
 
   return { cleanupTempSync, cleanupTemp }

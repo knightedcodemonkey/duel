@@ -681,6 +681,7 @@ describe('duel internals', () => {
 
         assert.throws(() => events.uncaughtException?.(new Error('boom')))
         assert.throws(() => events.unhandledRejection?.('fail'))
+        assert.equal(syncCalls, 5)
 
         unregister()
 

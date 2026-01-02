@@ -743,11 +743,7 @@ const duel = async args => {
 
       if (!success) {
         await cleanupTemp()
-        try {
-          unregisterCleanupHandlers()
-        } catch {
-          /* ignore */
-        }
+        unregisterCleanupHandlers()
         if (errorMsg) {
           handleErrorAndExit(errorMsg)
         }
@@ -820,11 +816,7 @@ const duel = async args => {
           mainPath,
         })
         await cleanupTemp()
-        try {
-          unregisterCleanupHandlers()
-        } catch {
-          /* ignore */
-        }
+        unregisterCleanupHandlers()
         logSuccess(startTime)
       }
     }
