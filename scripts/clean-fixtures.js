@@ -17,7 +17,20 @@ const run = async () => {
     }
   }
 
-  await Promise.all([...targets].map(dir => rm(dir, { recursive: true, force: true })))
+  await Promise.all(
+    [...targets].map(dir =>
+      rm(dir, {
+        recursive: true,
+        force: true,
+        // Windows can hold open handles; allow a few retries before failing.
+        maxRetries: 5,
+        retryDelay: 50,
+      }).catch(err => {
+        // eslint-disable-next-line no-console
+        console.warn(`Failed to remove ${dir}: ${err?.message ?? err}`)
+      }),
+    ),
+  )
 }
 
 run().catch(err => {

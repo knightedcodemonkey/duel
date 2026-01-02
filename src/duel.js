@@ -4,7 +4,7 @@ import { argv } from 'node:process'
 import { pathToFileURL } from 'node:url'
 import { join, dirname, resolve, relative, sep, normalize } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, mkdir, cp, access } from 'node:fs/promises'
+import { writeFile, rm, mkdir, cp, access, readdir } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
@@ -176,10 +176,10 @@ const duel = async args => {
       )
       .digest('hex')
       .slice(0, 8)
-    const cacheDir = join(projectRoot, '.duel-cache')
+    const cacheDir = join(projectDir, '.duel-cache')
     const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
     const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
-    const subDir = join(projectRoot, `_duel_${hash}_`)
+    const subDir = join(cacheDir, `_duel_${hash}_`)
     const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
@@ -483,6 +483,7 @@ const duel = async args => {
       const projectRel = relative(projectRoot, projectDir)
       const projectCopyDest = join(subDir, projectRel)
       const makeCopyFilter = (rootDir, allowDist) => src => {
+        if (src.split(/[/\\]/).includes('.duel-cache')) return false
         if (src.split(/[/\\]/).includes('node_modules')) return false
 
         if (allowDist) return true
@@ -496,11 +497,27 @@ const duel = async args => {
         return segment !== outDir
       }
       const copyFilesToTemp = async () => {
-        const copyProjectTree = async allowDist => {
-          await cp(projectDir, projectCopyDest, {
-            recursive: true,
-            filter: makeCopyFilter(projectDir, allowDist),
-          })
+        const copyDirContents = async (sourceDir, destDir, allowDist) => {
+          await mkdir(destDir, { recursive: true })
+          const filter = makeCopyFilter(sourceDir, allowDist)
+          const entries = await readdir(sourceDir, { withFileTypes: true })
+
+          for (const entry of entries) {
+            const srcPath = join(sourceDir, entry.name)
+            if (!filter(srcPath)) continue
+            const dstPath = join(destDir, entry.name)
+
+            await cp(srcPath, dstPath, {
+              recursive: true,
+              filter,
+            })
+          }
+        }
+
+        if (copyMode === 'full') {
+          const allowDist = hasReferences
+
+          await copyDirContents(projectDir, projectCopyDest, allowDist)
 
           if (hasReferences) {
             for (const ref of tsconfig.references ?? []) {
@@ -509,18 +526,9 @@ const duel = async args => {
               const refRel = relative(projectRoot, refAbs)
               const refDest = join(subDir, refRel)
 
-              await cp(refAbs, refDest, {
-                recursive: true,
-                filter: makeCopyFilter(refAbs, allowDist),
-              })
+              await copyDirContents(refAbs, refDest, allowDist)
             }
           }
-        }
-
-        if (copyMode === 'full') {
-          const allowDist = hasReferences
-
-          await copyProjectTree(allowDist)
         } else {
           const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
 
@@ -691,13 +699,14 @@ const duel = async args => {
         const toTransform = await glob(
           `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
           {
-            ignore: 'node_modules/**',
+            ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
         )
 
         let transformDiagnosticsError = false
 
         for (const file of toTransform) {
+          if (file.split(/[/\\]/).includes('node_modules')) continue
           const isTsLike = /\.[cm]?tsx?$/.test(file)
           const transformSyntaxMode =
             syntaxMode === true && isTsLike ? 'globals-only' : syntaxMode
@@ -767,7 +776,7 @@ const duel = async args => {
         const filenames = await glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
-            ignore: 'node_modules/**',
+            ignore: `${absoluteDualOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
         )
         const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
@@ -785,7 +794,9 @@ const duel = async args => {
         if (dirs && originalType === 'commonjs') {
           const primaryFiles = await glob(
             `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
-            { ignore: 'node_modules/**' },
+            {
+              ignore: `${primaryOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
+            },
           )
 
           await rewriteSpecifiersAndExtensions(primaryFiles, {

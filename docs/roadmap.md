@@ -5,6 +5,7 @@
 - Consider a `--quiet` flag to reduce log chatter alongside warnings/hazards.
 - Memoize resolver existence checks to trim repeated sync fs hits during rewrite, if profiling shows it matters.
 - Optionally prune stale `_duel_*` temp workspaces on startup (behind env flag and skipped in CI) to keep project roots tidy.
+- Deprecate `copyMode=full` (announce as compatibility-only, plan removal if unused) and favor the selective copy path by default.
 
 ## Optimize temp-copy overhead
 

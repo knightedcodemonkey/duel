@@ -64,7 +64,7 @@ It should work similarly for a CJS-first project. Except, your package.json file
 > This works best if your CJS-first project uses file extensions in _relative_ specifiers. That is acceptable in CJS and [required in ESM](https://nodejs.org/api/esm.html#import-specifiers). `duel` does not rewrite bare specifiers or remap relative specifiers to directory indexes.
 
 > [!TIP]
-> `duel` creates a hash-named temp workspace (`_duel_<hash>_`) alongside your project during a build. It is automatically removed on success/failure unless `DUEL_KEEP_TEMP=1` is set. If one is ever left behind (e.g., abrupt kill), it is safe to delete.
+> `duel` creates a hash-named temp workspace (`.duel-cache/_duel_<hash>_`) inside your project during a build. The `_duel_<hash>_` temp directory is removed on success/failure unless `DUEL_KEEP_TEMP=1` is set. The `.duel-cache/` folder itself (which also holds incremental caches) is not automatically deleted—add it to your `.gitignore`. If a temp folder is ever left behind (e.g., abrupt kill), it is safe to delete.
 
 ### Build orientation
 
