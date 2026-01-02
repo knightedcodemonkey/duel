@@ -65,4 +65,7 @@ export default [
   {
     ignores: ['test/__fixtures__/projectRefs/packages/**'],
   },
+  {
+    ignores: ['test/__fixtures__/**/*.ts'],
+  },
 ]

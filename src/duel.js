@@ -762,8 +762,10 @@ const duel = async args => {
           }
           throw err
         }
+        const dualGlob =
+          dualTarget === 'commonjs' ? '**/*{.js,.cjs,.d.ts}' : '**/*{.js,.mjs,.d.ts}'
         const filenames = await glob(
-          `${absoluteDualOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
+          `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
             ignore: 'node_modules/**',
           },
@@ -782,7 +784,7 @@ const duel = async args => {
 
         if (dirs && originalType === 'commonjs') {
           const primaryFiles = await glob(
-            `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
+            `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
             { ignore: 'node_modules/**' },
           )
 

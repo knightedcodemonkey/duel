@@ -14,6 +14,7 @@ import { duel } from '../src/duel.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const plain = resolve(__dirname, '__fixtures__/plain')
+const modes = resolve(__dirname, '__fixtures__/modes')
 const project = resolve(__dirname, '__fixtures__/project')
 const esmProject = resolve(__dirname, '__fixtures__/esmProject')
 const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
@@ -21,6 +22,7 @@ const extended = resolve(__dirname, '__fixtures__/extended')
 const dualHazard = resolve(__dirname, '__fixtures__/dualHazard')
 const dualError = resolve(__dirname, '__fixtures__/compileErrorsDual')
 const plainDist = join(plain, 'dist')
+const modesDist = join(modes, 'dist')
 const proDist = join(project, 'dist')
 const esmDist = join(esmProject, 'dist')
 const cjsDist = join(cjsProject, 'dist')
@@ -139,6 +141,78 @@ describe('duel', () => {
 
     await duel(['--detect-dual-package-hazard', 'nope'])
     assert.ok(logged(spy, 1).includes('--detect-dual-package-hazard expects'))
+  })
+
+  it('builds with --mode none and --mode full', async t => {
+    t.after(async () => {
+      await rmDist(plainDist)
+    })
+
+    for (const mode of ['none', 'full']) {
+      await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--mode', mode])
+
+      assert.ok(existsSync(resolve(plainDist, 'index.js')))
+      assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+
+      const cjs = await readFile(join(plainDist, 'cjs/index.cjs'), 'utf8')
+      assert.ok(!cjs.includes('import type'))
+      assert.ok(!cjs.includes('assert {'))
+      assert.match(cjs, /require\(['"]\.\/enforce\.cjs['"]\)/)
+
+      const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
+        stdio: 'inherit',
+      })
+      const { status: statusCjs } = spawnSync(
+        'node',
+        [join(plainDist, 'cjs/index.cjs')],
+        {
+          stdio: 'inherit',
+        },
+      )
+
+      assert.equal(statusEsm, 0)
+      assert.equal(statusCjs, 0)
+
+      await rmDist(plainDist)
+    }
+  })
+
+  it('lowers syntax only when --mode full', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spyLog = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(modesDist)
+    })
+
+    spyExit.mock.mockImplementation(code => {
+      throw new Error(`Mocked process.exit: ${code}`)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel(['-p', 'test/__fixtures__/modes/tsconfig.json', '--mode', 'none'])
+      },
+      { message: /Mocked process\.exit/ },
+    )
+
+    assert.ok(spyExit.mock.calls[0].arguments[0] > 0)
+
+    spyExit.mock.resetCalls()
+    spyLog.mock.resetCalls()
+
+    await duel(['-p', 'test/__fixtures__/modes/tsconfig.json', '--mode', 'full'])
+
+    assert.match(logged(spyLog, 0), /^Starting primary build/)
+    assert.match(logged(spyLog, 1), /^Starting dual build/)
+    assert.match(logged(spyLog, 2), /^Successfully created a dual CJS build/)
+    assert.ok(existsSync(resolve(modesDist, 'index.js')))
+    assert.ok(existsSync(resolve(modesDist, 'cjs/index.cjs')))
+
+    const cjs = await readFile(resolve(modesDist, 'cjs/index.cjs'), 'utf8')
+    assert.ok(!cjs.includes('import.meta'))
+    // This is lowered due to ES2019 target in modes tsconfig.json
+    assert.ok(!cjs.includes('?.'))
   })
 
   it('creates a dual CJS build while transforming module globals', async t => {
