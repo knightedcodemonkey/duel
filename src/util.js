@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url'
-import { realpath, readFile, writeFile, symlink } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { realpath, readFile, writeFile, symlink, rm } from 'node:fs/promises'
+import { existsSync, rmSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { cwd, platform } from 'node:process'
 import {
@@ -47,6 +47,89 @@ const log = (msg = '', level = 'info', opts = {}) => {
 const logSuccess = msg => log(msg, 'success')
 const logWarn = msg => log(msg, 'warn')
 const logError = msg => log(msg, 'error')
+const createTempCleanup = ({ subDir, keepTemp = false, logWarnFn = logWarn }) => {
+  let cleaned = false
+  let cleanupPromise = null
+
+  // Marks cleanup as started; returns false when already running or completed.
+  const beginCleanup = () => {
+    if (cleaned) return false
+    cleaned = true
+    return true
+  }
+
+  const cleanupTempSync = () => {
+    if (!beginCleanup()) return
+
+    if (keepTemp) {
+      logWarnFn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
+      return
+    }
+
+    try {
+      rmSync(subDir, { force: true, recursive: true })
+    } catch {
+      /* ignore */
+    }
+  }
+  const cleanupTemp = async () => {
+    if (cleanupPromise) return cleanupPromise
+
+    const runCleanup = async () => {
+      if (!beginCleanup()) return
+
+      if (keepTemp) {
+        logWarnFn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
+        return
+      }
+
+      try {
+        await rm(subDir, { force: true, recursive: true })
+      } catch {
+        /* ignore */
+      }
+    }
+
+    cleanupPromise = runCleanup()
+
+    return cleanupPromise
+  }
+
+  return { cleanupTempSync, cleanupTemp }
+}
+const registerCleanupHandlers = cleanupTempSync => {
+  const onExit = () => cleanupTempSync()
+  const onSigint = () => {
+    cleanupTempSync()
+    process.exit(1)
+  }
+  const onSigterm = () => {
+    cleanupTempSync()
+    process.exit(1)
+  }
+  const onUncaught = err => {
+    cleanupTempSync()
+    throw err
+  }
+  const onUnhandled = reason => {
+    cleanupTempSync()
+    throw reason instanceof Error ? reason : new Error(String(reason))
+  }
+
+  process.once('exit', onExit)
+  process.once('SIGINT', onSigint)
+  process.once('SIGTERM', onSigterm)
+  process.once('uncaughtException', onUncaught)
+  process.once('unhandledRejection', onUnhandled)
+
+  return () => {
+    process.removeListener('exit', onExit)
+    process.removeListener('SIGINT', onSigint)
+    process.removeListener('SIGTERM', onSigterm)
+    process.removeListener('uncaughtException', onUncaught)
+    process.removeListener('unhandledRejection', onUnhandled)
+  }
+}
 const getRealPathAsFileUrl = async path => {
   const realPath = await realpath(path)
   const asFileUrl = pathToFileURL(realPath).href
@@ -495,6 +578,8 @@ export {
   generateExports,
   stripKnownExt,
   ensureDotSlash,
+  createTempCleanup,
+  registerCleanupHandlers,
   processDiagnosticsForFile,
   exitOnDiagnostics,
   maybeLinkNodeModules,
