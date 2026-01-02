@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+  readFileSync,
+  existsSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import os from 'node:os'
 
@@ -9,6 +16,8 @@ import {
   logWarn,
   logError,
   logSuccess,
+  createTempCleanup,
+  registerCleanupHandlers,
   getRealPathAsFileUrl,
   getCompileFiles,
   getSubpath,
@@ -597,5 +606,95 @@ describe('duel internals', () => {
     assert.ok(warnings.some(msg => msg.includes('--exports-validate has no effect')))
     assert.ok(warnings.some(msg => msg.includes('No exports were written')))
     assert.ok(infos.some(msg => msg.includes('Exports validation successful.')))
+  })
+
+  describe('cleanup helpers', () => {
+    it('cleans temp workspace and honors keep flag', async () => {
+      const tmp = makeTmp()
+      const subDir = join(tmp, 'shadow')
+      const dualConfigPath = join(subDir, 'tsconfig.dual.json')
+      mkdirSync(subDir, { recursive: true })
+      writeFileSync(dualConfigPath, '{}')
+
+      const { cleanupTemp, cleanupTempSync } = createTempCleanup({
+        subDir,
+        dualConfigPath,
+        keepTemp: false,
+        logWarnFn: () => {},
+      })
+
+      await cleanupTemp()
+      assert.equal(false, existsSync(subDir))
+
+      // idempotent
+      cleanupTempSync()
+
+      const keepDir = join(tmp, 'keep')
+      const keepConfig = join(keepDir, 'tsconfig.dual.json')
+      mkdirSync(keepDir, { recursive: true })
+      writeFileSync(keepConfig, '{}')
+
+      const { cleanupTemp: keepCleanup } = createTempCleanup({
+        subDir: keepDir,
+        dualConfigPath: keepConfig,
+        keepTemp: true,
+        logWarnFn: () => {},
+      })
+
+      await keepCleanup()
+      assert.equal(true, existsSync(keepDir))
+
+      rmSync(tmp, { recursive: true, force: true })
+    })
+
+    it('registers and unregisters process handlers', () => {
+      const originalOnce = process.once
+      const originalRemove = process.removeListener
+      const originalExit = process.exit
+      const events = {}
+      const removed = []
+      const exitCodes = []
+
+      try {
+        process.once = (event, handler) => {
+          events[event] = handler
+        }
+        process.removeListener = (event, handler) => {
+          removed.push([event, handler])
+        }
+        process.exit = code => {
+          exitCodes.push(code)
+        }
+
+        let syncCalls = 0
+        const cleanupTempSync = () => {
+          syncCalls += 1
+        }
+
+        const unregister = registerCleanupHandlers(cleanupTempSync)
+
+        events.exit?.()
+        events.SIGINT?.()
+        events.SIGTERM?.()
+        assert.equal(syncCalls, 3)
+        assert.deepEqual(exitCodes, [1, 1])
+
+        assert.throws(() => events.uncaughtException?.(new Error('boom')))
+        assert.throws(() => events.unhandledRejection?.('fail'))
+
+        unregister()
+
+        const removedEvents = removed.map(([event]) => event)
+        assert.ok(removedEvents.includes('exit'))
+        assert.ok(removedEvents.includes('SIGINT'))
+        assert.ok(removedEvents.includes('SIGTERM'))
+        assert.ok(removedEvents.includes('uncaughtException'))
+        assert.ok(removedEvents.includes('unhandledRejection'))
+      } finally {
+        process.once = originalOnce
+        process.removeListener = originalRemove
+        process.exit = originalExit
+      }
+    })
   })
 })

@@ -57,6 +57,7 @@ const createTempCleanup = ({
 
   const cleanupTempSync = () => {
     if (cleaned) return
+
     cleaned = true
 
     if (keepTemp) {
