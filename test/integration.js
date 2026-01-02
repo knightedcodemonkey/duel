@@ -141,56 +141,38 @@ describe('duel', () => {
     assert.ok(logged(spy, 1).includes('--detect-dual-package-hazard expects'))
   })
 
-  it('builds with --mode none', async t => {
+  it('builds with --mode none and --mode full', async t => {
     t.after(async () => {
       await rmDist(plainDist)
     })
 
-    await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--mode', 'none'])
+    for (const mode of ['none', 'full']) {
+      await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--mode', mode])
 
-    assert.ok(existsSync(resolve(plainDist, 'index.js')))
-    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
+      assert.ok(existsSync(resolve(plainDist, 'index.js')))
+      assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
 
-    const cjs = await readFile(join(plainDist, 'cjs/index.cjs'), 'utf8')
-    assert.ok(!cjs.includes('import type'))
-    assert.ok(!cjs.includes('assert {'))
-    assert.match(cjs, /require\(['"]\.\/enforce\.cjs['"]\)/)
+      const cjs = await readFile(join(plainDist, 'cjs/index.cjs'), 'utf8')
+      assert.ok(!cjs.includes('import type'))
+      assert.ok(!cjs.includes('assert {'))
+      assert.match(cjs, /require\(['"]\.\/enforce\.cjs['"]\)/)
 
-    const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
-      stdio: 'inherit',
-    })
-    const { status: statusCjs } = spawnSync('node', [join(plainDist, 'cjs/index.cjs')], {
-      stdio: 'inherit',
-    })
+      const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
+        stdio: 'inherit',
+      })
+      const { status: statusCjs } = spawnSync(
+        'node',
+        [join(plainDist, 'cjs/index.cjs')],
+        {
+          stdio: 'inherit',
+        },
+      )
 
-    assert.equal(statusEsm, 0)
-    assert.equal(statusCjs, 0)
-  })
+      assert.equal(statusEsm, 0)
+      assert.equal(statusCjs, 0)
 
-  it('builds with --mode full', async t => {
-    t.after(async () => {
       await rmDist(plainDist)
-    })
-
-    await duel(['-p', 'test/__fixtures__/plain/tsconfig.json', '--mode', 'full'])
-
-    assert.ok(existsSync(resolve(plainDist, 'index.js')))
-    assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
-
-    const cjs = await readFile(join(plainDist, 'cjs/index.cjs'), 'utf8')
-    assert.ok(!cjs.includes('import type'))
-    assert.ok(!cjs.includes('assert {'))
-    assert.match(cjs, /require\(['"]\.\/enforce\.cjs['"]\)/)
-
-    const { status: statusEsm } = spawnSync('node', [join(plainDist, 'index.js')], {
-      stdio: 'inherit',
-    })
-    const { status: statusCjs } = spawnSync('node', [join(plainDist, 'cjs/index.cjs')], {
-      stdio: 'inherit',
-    })
-
-    assert.equal(statusEsm, 0)
-    assert.equal(statusCjs, 0)
+    }
   })
 
   it('creates a dual CJS build while transforming module globals', async t => {
