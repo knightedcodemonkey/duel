@@ -196,7 +196,7 @@ describe('duel', () => {
       { message: /Mocked process\.exit/ },
     )
 
-    assert.ok(spyExit.mock.calls[0].arguments > 0)
+    assert.ok(spyExit.mock.calls[0].arguments[0] > 0)
 
     spyExit.mock.resetCalls()
     spyLog.mock.resetCalls()
