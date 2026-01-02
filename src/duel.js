@@ -176,7 +176,7 @@ const duel = async args => {
       )
       .digest('hex')
       .slice(0, 8)
-    const cacheDir = join(projectRoot, '.duel-cache')
+    const cacheDir = join(projectDir, '.duel-cache')
     const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
     const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
     const subDir = join(cacheDir, `_duel_${hash}_`)
