@@ -618,13 +618,12 @@ describe('duel internals', () => {
 
       const { cleanupTemp, cleanupTempSync } = createTempCleanup({
         subDir,
-        dualConfigPath,
         keepTemp: false,
         logWarnFn: () => {},
       })
 
       await cleanupTemp()
-      assert.equal(false, existsSync(subDir))
+      assert.equal(existsSync(subDir), false)
 
       // idempotent
       cleanupTempSync()
@@ -636,13 +635,12 @@ describe('duel internals', () => {
 
       const { cleanupTemp: keepCleanup } = createTempCleanup({
         subDir: keepDir,
-        dualConfigPath: keepConfig,
         keepTemp: true,
         logWarnFn: () => {},
       })
 
       await keepCleanup()
-      assert.equal(true, existsSync(keepDir))
+      assert.equal(existsSync(keepDir), true)
 
       rmSync(tmp, { recursive: true, force: true })
     })

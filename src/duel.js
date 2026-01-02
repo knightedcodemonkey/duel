@@ -428,7 +428,6 @@ const duel = async args => {
       const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
       const { cleanupTemp, cleanupTempSync } = createTempCleanup({
         subDir,
-        dualConfigPath,
         keepTemp,
         logWarnFn: logWarn,
       })

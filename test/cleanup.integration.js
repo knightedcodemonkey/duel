@@ -29,7 +29,7 @@ describe('cleanup integration (guarded)', () => {
 
       mkdirSync(dirname(dualConfigPath), { recursive: true });
       writeFileSync(dualConfigPath, '{}');
-      const { cleanupTempSync } = createTempCleanup({ subDir, dualConfigPath, keepTemp: false, logWarnFn: () => {} });
+      const { cleanupTempSync } = createTempCleanup({ subDir, keepTemp: false, logWarnFn: () => {} });
       registerCleanupHandlers(cleanupTempSync);
       process.exit(0);
     `
@@ -40,7 +40,7 @@ describe('cleanup integration (guarded)', () => {
     })
 
     assert.equal(result.status, 0)
-    assert.equal(false, existsSync(subDir))
+    assert.equal(existsSync(subDir), false)
 
     rmSync(tmp, { recursive: true, force: true })
   })

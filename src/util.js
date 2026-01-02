@@ -47,12 +47,7 @@ const log = (msg = '', level = 'info', opts = {}) => {
 const logSuccess = msg => log(msg, 'success')
 const logWarn = msg => log(msg, 'warn')
 const logError = msg => log(msg, 'error')
-const createTempCleanup = ({
-  subDir,
-  dualConfigPath = null,
-  keepTemp = false,
-  logWarnFn = logWarn,
-}) => {
+const createTempCleanup = ({ subDir, keepTemp = false, logWarnFn = logWarn }) => {
   let cleaned = false
   let cleanupPromise = null
 
@@ -72,14 +67,6 @@ const createTempCleanup = ({
     }
 
     try {
-      if (dualConfigPath) {
-        rmSync(dualConfigPath, { force: true })
-      }
-    } catch {
-      /* ignore */
-    }
-
-    try {
       rmSync(subDir, { force: true, recursive: true })
     } catch {
       /* ignore */
@@ -88,7 +75,7 @@ const createTempCleanup = ({
   const cleanupTemp = async () => {
     if (cleanupPromise) return cleanupPromise
 
-    cleanupPromise = (async () => {
+    const runCleanup = async () => {
       if (!beginCleanup()) return
 
       if (keepTemp) {
@@ -97,19 +84,13 @@ const createTempCleanup = ({
       }
 
       try {
-        if (dualConfigPath) {
-          await rm(dualConfigPath, { force: true })
-        }
-      } catch {
-        /* ignore */
-      }
-
-      try {
         await rm(subDir, { force: true, recursive: true })
       } catch {
         /* ignore */
       }
-    })()
+    }
+
+    cleanupPromise = runCleanup()
 
     return cleanupPromise
   }
