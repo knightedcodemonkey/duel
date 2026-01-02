@@ -430,8 +430,11 @@ const maybeLinkNodeModules = async (
   if (nodeModules) {
     try {
       await symlinkFn(nodeModules, join(subDir, 'node_modules'), 'junction')
-    } catch {
-      /* If symlink fails, fall back to existing resolution. */
+    } catch (err) {
+      if (err?.code === 'EEXIST') return
+      logWarn(
+        `Failed to link node_modules into temp workspace (falling back to existing resolution): ${err.message}`,
+      )
     }
   }
 }

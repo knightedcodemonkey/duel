@@ -4,6 +4,7 @@
 - Decide coupling of `--rewrite-policy` with `--validate-specifiers` (fail fast when `warn|safe` + validation=false, or document decoupling).
 - Consider a `--quiet` flag to reduce log chatter alongside warnings/hazards.
 - Memoize resolver existence checks to trim repeated sync fs hits during rewrite, if profiling shows it matters.
+- Optionally prune stale `_duel_*` temp workspaces on startup (behind env flag and skipped in CI) to keep project roots tidy.
 
 ## Optimize temp-copy overhead
 

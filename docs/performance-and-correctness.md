@@ -8,17 +8,21 @@ This document outlines ways to speed up @knighted/duel while preserving the guar
 - Reduce redundant work (copying, parsing, type-checking) across runs.
 - Make optimizations opt-in or auto-detected to avoid regressions.
 
-## Low-Risk, High-Value Improvements
+## Phased Plan
 
-- **Incremental builds:** Pass `--incremental` (and `--composite` where needed) to both emits and persist `.tsbuildinfo` inside the temp/shadow workspace. Reuse the same shadow dir keyed by project hash to avoid re-parsing unchanged projects.
-- **Selective copy only:** Continue skipping `node_modules` and outDir; avoid full-copy fallbacks. Prefer symlink/junction for `node_modules` to cut I/O.
-- **Parallelize setup:** Run config copy/patching, node_modules linking, and temp dir prep with `Promise.all` while the primary build initializes. Gate parallelism by CPU count to avoid thrash on small machines.
-- **Config hashing:** Only rebuild the temp workspace when tsconfig/package hash changes; otherwise reuse cached copies and `.tsbuildinfo`.
+- **Phase 1: Quick wins (I/O & orchestration)**
+  - Shadow dir persistence: key temp workspace to a hash of tsconfig/package so `.tsbuildinfo` survives between runs.
+  - Selective copy only: keep skipping `node_modules` and outDir; prefer symlink/junction for `node_modules` with fallback (junction/hardlink) and clear messaging when symlink fails on Windows.
+  - Parallel setup: run copy + patch + link in `Promise.all`; gate parallelism by CPU count to avoid thrash.
+- **Phase 2: Correctness core**
+  - Single type-check, dual emit: use TS Program/SolutionBuilder to parse/check once, then emit ESM and CJS from the same AST/options delta; declarations come from the primary emit only.
+- **Phase 3: Fast path (opt-in)**
+  - `--fast-secondary`: keep primary `tsc` for ESM + types; use transform-only (esbuild/SWC) for CJS. Keep @knighted/module as the rewrite source of truth. Default remains pure `tsc`.
 
-## Emit Strategy Options
+## Emit Strategy Options (detail)
 
-- **Single type-check, dual emit (recommended first):** Use the TS program or solution builder API to parse/check once, then emit ESM and CJS with different `module` settings. Keeps correctness, removes the second parse/check.
-- **Fast secondary emit (opt-in):** Primary emit and declarations via `tsc`; secondary CJS via transform-only (esbuild/SWC) for speed. Guard behind a flag (e.g., `--fast-secondary`) so default remains pure `tsc`.
+- **Single type-check, dual emit:** Parse/check once; emit twice with differing `module` settings. Eliminates the second parse/check and preserves rewrite correctness.
+- **Fast secondary emit (opt-in):** Primary emit and declarations via `tsc`; secondary CJS via transform-only (esbuild/SWC) for speed. Guard behind `--fast-secondary`.
 - **No redundant types:** Emit declarations once (primary pass), skip `--emitDeclarationOnly` on the secondary.
 
 ## TSConfig and Resolution Hygiene
@@ -35,7 +39,11 @@ This document outlines ways to speed up @knighted/duel while preserving the guar
 
 ## Rollout Suggestions
 
-- Start with incremental `.tsbuildinfo` reuse and parallelized setup (lowest risk).
+- Start with incremental `.tsbuildinfo` reuse, hash-keyed temp dirs, and parallelized setup (lowest risk).
 - Next, prototype single type-check + dual emit; measure on a representative monorepo.
 - Offer `--fast-secondary` as an opt-in flag; document trade-offs (no type-check on secondary path).
 - Keep a `--no-parallel` escape hatch for constrained CI runners.
+
+## Profiling (TODO)
+
+- Add `--profile` to print timing breakdowns (workspace prep, primary emit, secondary emit, rewrites) and note cache hits vs cold runs.

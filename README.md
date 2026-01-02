@@ -6,6 +6,9 @@
 
 Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#dual-commonjses-module-packages) with TypeScript. Supports CommonJS and ES module projects.
 
+> [!NOTE]
+> I wish this tool were unnecessary, but dual emit was declared out of scope by the TypeScript team, so `duel` exists to fill that gap.
+
 ## Features
 
 - Bidirectional ESM ↔️ CJS dual builds inferred from the package.json `type`.
@@ -59,6 +62,9 @@ It should work similarly for a CJS-first project. Except, your package.json file
 
 > [!IMPORTANT]
 > This works best if your CJS-first project uses file extensions in _relative_ specifiers. That is acceptable in CJS and [required in ESM](https://nodejs.org/api/esm.html#import-specifiers). `duel` does not rewrite bare specifiers or remap relative specifiers to directory indexes.
+
+> [!TIP]
+> `duel` creates a hash-named temp workspace (`_duel_<hash>_`) alongside your project during a build. It is automatically removed on success/failure unless `DUEL_KEEP_TEMP=1` is set. If one is ever left behind (e.g., abrupt kill), it is safe to delete.
 
 ### Build orientation
 

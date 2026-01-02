@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { argv } from 'node:process'
+import { pathToFileURL } from 'node:url'
 import { join, dirname, resolve, relative, sep, normalize } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, mkdir, cp, access } from 'node:fs/promises'
-import { randomBytes } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 import { glob } from 'glob'
@@ -26,6 +27,7 @@ import {
   maybeLinkNodeModules,
   runExportsValidationBlock,
 } from './util.js'
+
 import { rewriteSpecifiersAndExtensions } from './resolver.js'
 
 const handleErrorAndExit = message => {
@@ -93,7 +95,7 @@ const duel = async args => {
       { cwd: projectDir },
     )
 
-    const runBuild = (project, outDir) => {
+    const runBuild = (project, outDir, tsBuildInfoFile, cwdForBuild) => {
       return new Promise((fulfill, rejectBuild) => {
         const useBuildMode = hasReferences
         const tsArgs = useBuildMode
@@ -101,7 +103,17 @@ const duel = async args => {
           : outDir
             ? [tsc, '-p', project, '--outDir', outDir]
             : [tsc, '-p', project]
-        const build = spawn(process.execPath, tsArgs, { stdio: 'inherit' })
+        if (!useBuildMode) {
+          tsArgs.push('--incremental')
+
+          if (tsBuildInfoFile) {
+            tsArgs.push('--tsBuildInfoFile', tsBuildInfoFile)
+          }
+        }
+        const build = spawn(process.execPath, tsArgs, {
+          stdio: 'inherit',
+          cwd: cwdForBuild ?? process.cwd(),
+        })
 
         build.on('exit', code => {
           if (code > 0) {
@@ -119,28 +131,116 @@ const duel = async args => {
     const absoluteOutDir = resolve(projectDir, outDir)
     const originalType = pkg.packageJson.type ?? 'commonjs'
     const isCjsBuild = originalType !== 'commonjs'
+    const absoluteDualOutDir = join(
+      projectDir,
+      isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
+    )
+    const projectRoot = dirname(projectDir)
     const primaryOutDir = dirs
       ? isCjsBuild
         ? join(absoluteOutDir, 'esm')
         : join(absoluteOutDir, 'cjs')
       : absoluteOutDir
-    const hex = randomBytes(4).toString('hex')
+    const {
+      type,
+      exports,
+      imports,
+      main,
+      module,
+      types,
+      typings,
+      typesVersions,
+      sideEffects,
+    } = pkg.packageJson ?? {}
+    const pkgHashInputs = {
+      type,
+      exports,
+      imports,
+      main,
+      module,
+      types,
+      typings,
+      typesVersions,
+      sideEffects,
+    }
+    const hash = createHash('sha1')
+      .update(
+        JSON.stringify({
+          configPath,
+          tsconfig,
+          packageJson: pkgHashInputs,
+          dualTarget: isCjsBuild ? 'cjs' : 'esm',
+        }),
+      )
+      .digest('hex')
+      .slice(0, 8)
+    const cacheDir = join(projectRoot, '.duel-cache')
+    const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
+    const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
+    const subDir = join(projectRoot, `_duel_${hash}_`)
+    const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
-    const getOverrideTsConfig = () => {
+    function mapReferencesToShadow(references = [], options) {
+      const { resolveRefPath, toShadowPathFn, fromDir } = options
+
+      return references.map(ref => {
+        if (!ref?.path) return ref
+
+        const refAbs = resolveRefPath(ref.path)
+        const shadowRef = toShadowPathFn(refAbs)
+
+        return {
+          ...ref,
+          path: relative(fromDir, shadowRef),
+        }
+      })
+    }
+    const getOverrideTsConfig = dualConfigDir => {
+      const shadowReferences = mapReferencesToShadow(tsconfig.references ?? [], {
+        resolveRefPath: refPath => resolve(projectDir, refPath),
+        toShadowPathFn: abs => join(subDir, relative(projectRoot, abs)),
+        fromDir: dualConfigDir,
+      })
+
       return {
         ...tsconfig,
+        references: shadowReferences,
         compilerOptions: {
-          ...tsconfig.compilerOptions,
+          ...(tsconfig.compilerOptions ?? {}),
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
+          target: tsconfig.compilerOptions?.target ?? 'ES2022',
+          // Emit dual build into the shadow workspace, then copy to real outDir
+          outDir: shadowDualOutDir,
+          incremental: true,
+          tsBuildInfoFile: dualTsBuildInfoFile,
         },
       }
     }
     const hasReferences =
       Array.isArray(tsconfig.references) && tsconfig.references.length > 0
     const runPrimaryBuild = () => {
-      return runBuild(configPath, hasReferences ? undefined : primaryOutDir)
+      return runBuild(
+        configPath,
+        hasReferences ? undefined : primaryOutDir,
+        hasReferences ? undefined : primaryTsBuildInfoFile,
+        projectDir,
+      )
+    }
+    const refreshDualBuildInfo = async () => {
+      try {
+        await access(shadowDualOutDir)
+      } catch {
+        await rm(dualTsBuildInfoFile, { force: true })
+      }
+    }
+    const refreshPrimaryBuildInfo = async () => {
+      try {
+        await access(primaryOutDir)
+      } catch {
+        await rm(primaryTsBuildInfoFile, { force: true })
+      }
     }
     const resolveReferenceConfigPath = (baseDir, refPath) => {
       const abs = resolve(baseDir, refPath)
@@ -306,6 +406,7 @@ const duel = async args => {
     const startTime = performance.now()
 
     try {
+      await refreshPrimaryBuildInfo()
       await runPrimaryBuild()
       success = true
     } catch ({ message }) {
@@ -313,21 +414,15 @@ const duel = async args => {
     }
 
     if (success) {
-      const projectRoot = dirname(projectDir)
       const parentRoot = dirname(projectRoot)
-      const subDir = join(projectRoot, `_${hex}_`)
-      const absoluteDualOutDir = join(
-        projectDir,
-        isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
-      )
-      const tsconfigDual = getOverrideTsConfig()
       const tsconfigRel = relative(projectRoot, configPath)
       const tsconfigDualRel = tsconfigRel.replace(
         /tsconfig\.json$/i,
-        `tsconfig.${hex}.json`,
+        `tsconfig.${hash}.json`,
       )
       const dualConfigPath = join(subDir, tsconfigDualRel)
       const dualConfigDir = dirname(dualConfigPath)
+      const tsconfigDual = getOverrideTsConfig(dualConfigDir)
       let errorMsg = ''
 
       let exportsConfigData = null
@@ -371,8 +466,12 @@ const duel = async args => {
         }
       }
 
-      await mkdir(subDir, { recursive: true })
-      await maybeLinkNodeModules(projectRoot, subDir)
+      await Promise.all([
+        mkdir(subDir, { recursive: true }),
+        mkdir(cacheDir, { recursive: true }),
+      ])
+
+      const linkNodeModulesPromise = maybeLinkNodeModules(projectDir, subDir)
       const projectRel = relative(projectRoot, projectDir)
       const projectCopyDest = join(subDir, projectRel)
       const makeCopyFilter = (rootDir, allowDist) => src => {
@@ -388,106 +487,193 @@ const duel = async args => {
 
         return segment !== outDir
       }
-      const copyProjectTree = async allowDist => {
-        await cp(projectDir, projectCopyDest, {
-          recursive: true,
-          filter: makeCopyFilter(projectDir, allowDist),
-        })
+      const copyFilesToTemp = async () => {
+        const copyProjectTree = async allowDist => {
+          await cp(projectDir, projectCopyDest, {
+            recursive: true,
+            filter: makeCopyFilter(projectDir, allowDist),
+          })
 
-        if (hasReferences) {
-          for (const ref of tsconfig.references ?? []) {
-            if (!ref.path) continue
-            const refAbs = resolve(projectDir, ref.path)
-            const refRel = relative(projectRoot, refAbs)
-            const refDest = join(subDir, refRel)
+          if (hasReferences) {
+            for (const ref of tsconfig.references ?? []) {
+              if (!ref.path) continue
+              const refAbs = resolve(projectDir, ref.path)
+              const refRel = relative(projectRoot, refAbs)
+              const refDest = join(subDir, refRel)
 
-            await cp(refAbs, refDest, {
-              recursive: true,
-              filter: makeCopyFilter(refAbs, allowDist),
-            })
+              await cp(refAbs, refDest, {
+                recursive: true,
+                filter: makeCopyFilter(refAbs, allowDist),
+              })
+            }
           }
         }
-      }
 
-      if (copyMode === 'full') {
-        const allowDist = hasReferences
+        if (copyMode === 'full') {
+          const allowDist = hasReferences
 
-        await copyProjectTree(allowDist)
-      } else {
-        const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
+          await copyProjectTree(allowDist)
+        } else {
+          const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
 
-        for (const file of filesToCopy) {
-          let rel = relative(projectRoot, file)
-          rel = normalize(rel)
+          for (const file of filesToCopy) {
+            let rel = relative(projectRoot, file)
+            rel = normalize(rel)
 
-          if (rel.startsWith('..')) {
-            const altRel = hasReferences ? normalize(relative(parentRoot, file)) : rel
+            if (rel.startsWith('..')) {
+              const altRel = hasReferences ? normalize(relative(parentRoot, file)) : rel
 
-            if (!altRel.startsWith('..')) {
-              rel = altRel
-            } else {
-              logWarn(`Skipping copy for ${file} outside of project root ${projectRoot}`)
-              continue
+              if (!altRel.startsWith('..')) {
+                rel = altRel
+              } else {
+                logWarn(
+                  `Skipping copy for ${file} outside of project root ${projectRoot}`,
+                )
+                continue
+              }
+            }
+
+            const dest = join(subDir, rel)
+
+            await mkdir(dirname(dest), { recursive: true })
+            await cp(file, dest)
+          }
+
+          const missingConfigs = []
+
+          for (const configFile of configFiles) {
+            const dest = join(subDir, relative(projectRoot, configFile))
+
+            try {
+              await access(dest)
+            } catch {
+              missingConfigs.push({ src: configFile, dest })
             }
           }
 
-          const dest = join(subDir, rel)
+          if (missingConfigs.length) {
+            logWarn(
+              `Copying ${missingConfigs.length} missing referenced config(s) into temp workspace: ${missingConfigs
+                .map(entry => entry.src)
+                .join(', ')}`,
+            )
 
-          await mkdir(dirname(dest), { recursive: true })
-          await cp(file, dest)
+            for (const { src, dest } of missingConfigs) {
+              await mkdir(dirname(dest), { recursive: true })
+              await cp(src, dest)
+            }
+          }
         }
+      }
+      const toShadowPath = absPath => join(subDir, relative(projectRoot, absPath))
 
-        const missingConfigs = []
-
+      // Patch referenced tsconfig files in the shadow workspace to emit dual outputs
+      const patchReferencedConfigs = async () => {
         for (const configFile of configFiles) {
+          if (configFile === configPath) continue
+
           const dest = join(subDir, relative(projectRoot, configFile))
 
+          let parsed = null
           try {
-            await access(dest)
-          } catch {
-            missingConfigs.push({ src: configFile, dest })
+            parsed = parseTsconfig(dest)
+          } catch (err) {
+            logWarn(
+              `Skipping referenced tsconfig at ${dest} (parse failed): ${err?.message ?? err}`,
+            )
+            continue
           }
-        }
 
-        if (missingConfigs.length) {
-          logWarn(
-            `Copying ${missingConfigs.length} missing referenced config(s) into temp workspace: ${missingConfigs
-              .map(entry => entry.src)
-              .join(', ')}`,
+          const cfg = parsed?.tsconfig ?? parsed
+
+          if (!cfg || typeof cfg !== 'object') continue
+
+          const cfgDir = dirname(configFile)
+          const baseOut = cfg.compilerOptions?.outDir
+            ? resolve(cfgDir, cfg.compilerOptions.outDir)
+            : resolve(cfgDir, 'dist')
+          const dualOutReal = join(baseOut, isCjsBuild ? 'cjs' : 'esm')
+          const dualOut = toShadowPath(dualOutReal)
+          const tsbuildReal = cfg.compilerOptions?.tsBuildInfoFile
+            ? resolve(cfgDir, cfg.compilerOptions.tsBuildInfoFile)
+            : join(baseOut, 'tsconfig.tsbuildinfo')
+          const dualTsbuild = toShadowPath(
+            join(dirname(tsbuildReal), 'tsconfig.dual.tsbuildinfo'),
           )
-
-          for (const { src, dest } of missingConfigs) {
-            await mkdir(dirname(dest), { recursive: true })
-            await cp(src, dest)
+          const shadowReferences = mapReferencesToShadow(cfg.references ?? [], {
+            resolveRefPath: refPath => resolveReferenceConfigPath(cfgDir, refPath),
+            toShadowPathFn: toShadowPath,
+            fromDir: dirname(dest),
+          })
+          const patched = {
+            ...cfg,
+            references: shadowReferences,
+            compilerOptions: {
+              ...(cfg.compilerOptions ?? {}),
+              module: 'NodeNext',
+              moduleResolution: 'NodeNext',
+              outDir: dualOut,
+              incremental: cfg.compilerOptions?.incremental ?? true,
+              tsBuildInfoFile: dualTsbuild,
+            },
           }
+
+          await writeFile(dest, JSON.stringify(patched, null, 2))
         }
       }
 
       /**
        * Write dual package.json and tsconfig into temp dir; avoid mutating root package.json.
        */
-      await writeFile(
-        join(subDir, relative(projectRoot, pkg.path)),
-        JSON.stringify({
-          type: isCjsBuild ? 'commonjs' : 'module',
-        }),
-      )
+      await copyFilesToTemp()
+      await patchReferencedConfigs()
 
-      await mkdir(dualConfigDir, { recursive: true })
-      await writeFile(
-        dualConfigPath,
-        JSON.stringify(
-          {
-            ...tsconfigDual,
-            compilerOptions: {
-              ...tsconfigDual.compilerOptions,
-              outDir: absoluteDualOutDir,
+      const writeDualPackage = async () => {
+        const pkgDest = join(subDir, relative(projectRoot, pkg.path))
+
+        await mkdir(dirname(pkgDest), { recursive: true })
+        await writeFile(
+          pkgDest,
+          JSON.stringify(
+            {
+              name: pkg.packageJson?.name,
+              version: pkg.packageJson?.version,
+              type: isCjsBuild ? 'commonjs' : 'module',
+              exports: pkg.packageJson?.exports,
+              imports: pkg.packageJson?.imports,
+              main: pkg.packageJson?.main,
+              module: pkg.packageJson?.module,
+              types: pkg.packageJson?.types ?? pkg.packageJson?.typings,
+              typesVersions: pkg.packageJson?.typesVersions,
+              sideEffects: pkg.packageJson?.sideEffects,
             },
-          },
-          null,
-          2,
-        ),
-      )
+            null,
+            2,
+          ),
+        )
+      }
+
+      const writeDualConfig = async () => {
+        await mkdir(dualConfigDir, { recursive: true })
+        await writeFile(
+          dualConfigPath,
+          JSON.stringify(
+            {
+              ...tsconfigDual,
+              compilerOptions: {
+                ...tsconfigDual.compilerOptions,
+                outDir: shadowDualOutDir,
+                incremental: true,
+                tsBuildInfoFile: dualTsBuildInfoFile,
+              },
+            },
+            null,
+            2,
+          ),
+        )
+      }
+
+      await Promise.all([linkNodeModulesPromise, writeDualPackage(), writeDualConfig()])
 
       if (modules) {
         /**
@@ -533,22 +719,30 @@ const duel = async args => {
 
       // Build dual
       log('Starting dual build...')
-      try {
-        await runBuild(dualConfigPath, hasReferences ? undefined : absoluteDualOutDir)
-      } catch ({ message }) {
-        success = false
-        errorMsg = message
-      } finally {
-        const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
-
-        // Cleanup temp dir unless debugging is requested
+      const keepTemp = process.env.DUEL_KEEP_TEMP === '1'
+      const cleanupTemp = async () => {
         if (!keepTemp) {
           await rm(dualConfigPath, { force: true })
           await rm(subDir, { force: true, recursive: true })
         } else {
           logWarn(`DUEL_KEEP_TEMP=1 set; temp workspace preserved at ${subDir}`)
         }
+      }
+      try {
+        await refreshDualBuildInfo()
+        await runBuild(
+          dualConfigPath,
+          hasReferences ? undefined : shadowDualOutDir,
+          hasReferences ? undefined : dualTsBuildInfoFile,
+          subDir,
+        )
+      } catch ({ message }) {
+        success = false
+        errorMsg = message
+      }
 
+      if (!success) {
+        await cleanupTemp()
         if (errorMsg) {
           handleErrorAndExit(errorMsg)
         }
@@ -557,17 +751,29 @@ const duel = async args => {
       if (success) {
         const dualTarget = isCjsBuild ? 'commonjs' : 'module'
         const dualTargetExt = isCjsBuild ? '.cjs' : dirs ? '.js' : '.mjs'
+        await rm(absoluteDualOutDir, { force: true, recursive: true })
+        await mkdir(dirname(absoluteDualOutDir), { recursive: true })
+        // Only copy if the shadow dual outDir was produced; absent indicates a failed emit
+        try {
+          await cp(shadowDualOutDir, absoluteDualOutDir, { recursive: true })
+        } catch (err) {
+          if (err?.code === 'ENOENT') {
+            throw new Error(`Dual build output not found at ${shadowDualOutDir}`)
+          }
+          throw err
+        }
         const filenames = await glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/**/*{.js,.d.ts}`,
           {
             ignore: 'node_modules/**',
           },
         )
+        const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
 
         await rewriteSpecifiersAndExtensions(filenames, {
           target: dualTarget,
           ext: dualTargetExt,
-          syntaxMode,
+          syntaxMode: rewriteSyntaxMode,
           rewritePolicy,
           validateSpecifiers,
           onWarn: message => logWarn(message),
@@ -583,7 +789,8 @@ const duel = async args => {
           await rewriteSpecifiersAndExtensions(primaryFiles, {
             target: 'commonjs',
             ext: '.cjs',
-            syntaxMode,
+            // Always lower syntax for primary CJS output when dirs mode rewrites primary build.
+            syntaxMode: true,
             rewritePolicy,
             validateSpecifiers,
             onWarn: message => logWarn(message),
@@ -605,18 +812,35 @@ const duel = async args => {
           mainDefaultKind,
           mainPath,
         })
+        await cleanupTemp()
         logSuccess(startTime)
       }
     }
   }
 }
 
-;(async () => {
-  const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1] ?? '')
-
-  if (import.meta.url === realFileUrlArgv1) {
-    await duel()
+const getCurrentHref = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.url) return import.meta.url
+  if (typeof module !== 'undefined' && module?.filename) {
+    return pathToFileURL(module.filename).href
   }
-})()
+  return null
+}
+
+const runIfEntry = async () => {
+  try {
+    const realFileUrlArgv1 = await getRealPathAsFileUrl(argv[1] ?? '')
+    const currentHref = getCurrentHref()
+
+    if (currentHref && currentHref === realFileUrlArgv1) {
+      await duel()
+    }
+  } catch (err) {
+    logError(err?.message ?? err)
+    process.exit(1)
+  }
+}
+
+runIfEntry()
 
 export { duel }
