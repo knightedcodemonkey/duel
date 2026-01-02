@@ -9,6 +9,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 - **Build pipeline runs in a temp workspace copy.** Dual builds no longer mutate the root `package.json`; a temp copy is created with an adjusted `type`. External tools that watched in-place `package.json` edits will see different behavior.
   - **IMPORTANT:** The temp-copy flow adds some I/O for large repos (copying sources/reference packages and running transforms there). `node_modules` is skipped; when references exist, existing `dist` may be reused. Very large projects may see modestly slower runs compared to the old in-place mutation.
 - **Project references run with `tsc -b`.** When `tsconfig.json` contains references, builds switch to TypeScript build mode. Output shape can differ from `tsc -p` for some setups.
+- **Dual CJS builds enforce CJS semantics.** The shadow workspace now uses `type: "commonjs"` plus `module: "NodeNext"` for the dual build, so TypeScript will error on CJS-incompatible syntax like `import.meta` unless you adjust code or opt into `--mode globals`/`--mode full` (v3 previously allowed this to slip through).
 - **Exports tooling additions.** New flags (`--exports-config`, `--exports-validate`) are available; when used, they can emit warnings or fail on invalid configs.
 - **Deprecated flags removed.** `--modules`, `--transform-syntax`, and `--target-extension` are gone; use `--mode globals` or `--mode full` instead.
 
@@ -46,3 +47,4 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 - **Why are some rewrites skipped now?** Missing targets + `rewrite-policy safe` causes skips with warnings. Use `warn` to force rewrites or fix the missing files.
 - **Can I suppress hazard warnings?** Yes, `--detect-dual-package-hazard off`.
 - **Why isn’t package.json changed anymore?** v4 writes to a temp copy to avoid mutating your root; watch the emitted outDir instead.
+- **Why do I see `import.meta` errors in CJS builds?** v4 compiles the dual target in a CommonJS context (shadow `package.json` is `type: "commonjs"`), so TypeScript rejects CJS-incompatible syntax. Fix the source for CJS or run with `--mode globals`/`--mode full` to inject compatibility transforms.
