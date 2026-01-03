@@ -138,7 +138,7 @@ const duel = async args => {
       projectDir,
       isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
     )
-    const projectRoot = dirname(projectDir)
+    const projectParentDir = dirname(projectDir)
     const primaryOutDir = dirs
       ? isCjsBuild
         ? join(absoluteOutDir, 'esm')
@@ -181,7 +181,7 @@ const duel = async args => {
     const primaryTsBuildInfoFile = join(cacheDir, `primary.${hash}.tsbuildinfo`)
     const dualTsBuildInfoFile = join(cacheDir, `dual.${hash}.tsbuildinfo`)
     const subDir = join(cacheDir, `_duel_${hash}_`)
-    const shadowDualOutDir = join(subDir, relative(projectRoot, absoluteDualOutDir))
+    const shadowDualOutDir = join(subDir, relative(projectParentDir, absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
     function mapReferencesToShadow(references = [], options) {
@@ -202,7 +202,7 @@ const duel = async args => {
     const getOverrideTsConfig = dualConfigDir => {
       const shadowReferences = mapReferencesToShadow(tsconfig.references ?? [], {
         resolveRefPath: refPath => resolve(projectDir, refPath),
-        toShadowPathFn: abs => join(subDir, relative(projectRoot, abs)),
+        toShadowPathFn: abs => join(subDir, relative(projectParentDir, abs)),
         fromDir: dualConfigDir,
       })
 
@@ -415,8 +415,8 @@ const duel = async args => {
     }
 
     if (success) {
-      const parentRoot = dirname(projectRoot)
-      const tsconfigRel = relative(projectRoot, configPath)
+      const parentRoot = dirname(projectParentDir)
+      const tsconfigRel = relative(projectParentDir, configPath)
       const tsconfigDualRel = tsconfigRel.replace(
         /tsconfig\.json$/i,
         `tsconfig.${hash}.json`,
@@ -479,7 +479,7 @@ const duel = async args => {
       ])
 
       const linkNodeModulesPromise = maybeLinkNodeModules(projectDir, subDir)
-      const projectRel = relative(projectRoot, projectDir)
+      const projectRel = relative(projectParentDir, projectDir)
       const projectCopyDest = join(subDir, projectRel)
       const makeCopyFilter = (rootDir, allowDist) => src => {
         if (src.split(/[/\\]/).includes('.duel-cache')) return false
@@ -522,7 +522,7 @@ const duel = async args => {
             for (const ref of tsconfig.references ?? []) {
               if (!ref.path) continue
               const refAbs = resolve(projectDir, ref.path)
-              const refRel = relative(projectRoot, refAbs)
+              const refRel = relative(projectParentDir, refAbs)
               const refDest = join(subDir, refRel)
 
               await copyDirContents(refAbs, refDest, allowDist)
@@ -532,7 +532,7 @@ const duel = async args => {
           const filesToCopy = new Set([...compileFiles, ...configFiles, ...packageJsons])
 
           for (const file of filesToCopy) {
-            let rel = relative(projectRoot, file)
+            let rel = relative(projectParentDir, file)
             rel = normalize(rel)
 
             if (rel.startsWith('..')) {
@@ -542,7 +542,7 @@ const duel = async args => {
                 rel = altRel
               } else {
                 logError(
-                  `Referenced config or source is outside the project root and cannot be patched: ${file}. Move it inside ${projectRoot} (or its parent for project references) so Duel can create an isolated shadow build.`,
+                  `Referenced config or source is outside the project parent directory and cannot be patched: ${file}. Move it inside ${projectParentDir} (or its parent for project references) so Duel can create an isolated shadow build.`,
                 )
                 process.exit(1)
               }
@@ -557,7 +557,7 @@ const duel = async args => {
           const missingConfigs = []
 
           for (const configFile of configFiles) {
-            const dest = join(subDir, relative(projectRoot, configFile))
+            const dest = join(subDir, relative(projectParentDir, configFile))
 
             try {
               await access(dest)
@@ -580,14 +580,14 @@ const duel = async args => {
           }
         }
       }
-      const toShadowPath = absPath => join(subDir, relative(projectRoot, absPath))
+      const toShadowPath = absPath => join(subDir, relative(projectParentDir, absPath))
 
       // Patch referenced tsconfig files in the shadow workspace to emit dual outputs
       const patchReferencedConfigs = async () => {
         for (const configFile of configFiles) {
           if (configFile === configPath) continue
 
-          const dest = join(subDir, relative(projectRoot, configFile))
+          const dest = join(subDir, relative(projectParentDir, configFile))
 
           const parsed = parseTsconfig(dest)
           const cfg = parsed?.tsconfig ?? parsed
@@ -635,7 +635,7 @@ const duel = async args => {
       await patchReferencedConfigs()
 
       const writeDualPackage = async () => {
-        const pkgDest = join(subDir, relative(projectRoot, pkg.path))
+        const pkgDest = join(subDir, relative(projectParentDir, pkg.path))
 
         await mkdir(dirname(pkgDest), { recursive: true })
         await writeFile(
