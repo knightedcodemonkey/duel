@@ -117,7 +117,7 @@ Project scope is helpful in monorepos or hoisted installs where hazards surface 
 
 ## Options
 
-The available options are limited, because you should define most of them inside your project's `tsconfig.json` file.
+These are the CLI options `duel` supports to work alongside your project's `tsconfig.json` settings.
 
 - `--project, -p` The path to the project's configuration file. Defaults to `tsconfig.json`.
 - `--pkg-dir, -k` The directory to start looking for a package.json file. Defaults to `--project` dir.

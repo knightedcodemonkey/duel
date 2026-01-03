@@ -30,6 +30,7 @@ import {
   maybeLinkNodeModules,
   runExportsValidationBlock,
 } from '../src/util.js'
+import { rewriteSpecifiersAndExtensions } from '../src/resolver.js'
 
 const makeTmp = () => mkdtempSync(join(os.tmpdir(), 'duel-unit-'))
 
@@ -694,6 +695,105 @@ describe('duel internals', () => {
         process.removeListener = originalRemove
         process.exit = originalExit
       }
+    })
+
+    it('rewrites js maps when present and keeps sourceMappingURL in sync', async () => {
+      const tmp = makeTmp()
+      const file = join(tmp, 'a.js')
+      const mapFile = `${file}.map`
+      const source = 'import "./dep.js"\n//# sourceMappingURL=a.js.map\n'
+      writeFileSync(file, source)
+      writeFileSync(
+        mapFile,
+        JSON.stringify({
+          version: 3,
+          file: 'a.js',
+          sources: ['a.ts'],
+          sourcesContent: ['export const x = 1;'],
+          names: [],
+          mappings: 'AAAA',
+        }),
+      )
+
+      await rewriteSpecifiersAndExtensions([file], {
+        target: 'module',
+        ext: '.mjs',
+        syntaxMode: false,
+      })
+
+      const outFile = join(tmp, 'a.mjs')
+      const outMap = `${outFile}.map`
+      assert.ok(existsSync(outFile))
+      assert.ok(existsSync(outMap))
+
+      const rewritten = readFileSync(outFile, 'utf8')
+      assert.ok(rewritten.includes('./dep.mjs'))
+      assert.ok(rewritten.includes('a.mjs.map'))
+
+      const map = JSON.parse(readFileSync(outMap, 'utf8'))
+      assert.equal(map.file, 'a.mjs')
+      assert.deepEqual(map.sources, ['a.ts'])
+
+      rmSync(tmp, { recursive: true, force: true })
+    })
+
+    it('does not create maps when none exist', async () => {
+      const tmp = makeTmp()
+      const file = join(tmp, 'b.js')
+      writeFileSync(file, 'import "./dep.js"\n')
+
+      await rewriteSpecifiersAndExtensions([file], {
+        target: 'module',
+        ext: '.mjs',
+        syntaxMode: false,
+      })
+
+      const outFile = join(tmp, 'b.mjs')
+      const outMap = `${outFile}.map`
+      assert.ok(existsSync(outFile))
+      assert.equal(existsSync(outMap), false)
+
+      rmSync(tmp, { recursive: true, force: true })
+    })
+
+    it('rewrites declaration maps alongside .d.ts outputs', async () => {
+      const tmp = makeTmp()
+      const file = join(tmp, 'types.d.ts')
+      const mapFile = `${file}.map`
+      const source =
+        'export declare const x: typeof import("./dep.js")\n//# sourceMappingURL=types.d.ts.map\n'
+      writeFileSync(file, source)
+      writeFileSync(
+        mapFile,
+        JSON.stringify({
+          version: 3,
+          file: 'types.d.ts',
+          sources: ['types.ts'],
+          sourcesContent: ['export declare const x: number'],
+          names: [],
+          mappings: 'AAAA',
+        }),
+      )
+
+      await rewriteSpecifiersAndExtensions([file], {
+        target: 'module',
+        ext: '.mjs',
+        syntaxMode: false,
+      })
+
+      const outFile = join(tmp, 'types.d.mts')
+      const outMap = `${outFile}.map`
+      assert.ok(existsSync(outFile))
+      assert.ok(existsSync(outMap))
+
+      const rewritten = readFileSync(outFile, 'utf8')
+      assert.ok(rewritten.includes('./dep.mjs'))
+      assert.ok(rewritten.includes('types.d.mts.map'))
+
+      const map = JSON.parse(readFileSync(outMap, 'utf8'))
+      assert.equal(map.file, 'types.d.mts')
+
+      rmSync(tmp, { recursive: true, force: true })
     })
   })
 })
