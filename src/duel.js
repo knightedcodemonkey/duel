@@ -96,7 +96,8 @@ const duel = async args => {
       },
       { cwd: projectDir },
     )
-
+    const hasReferences =
+      Array.isArray(tsconfig.references) && tsconfig.references.length > 0
     const runBuild = (project, outDir, tsBuildInfoFile, cwdForBuild) => {
       return new Promise((fulfill, rejectBuild) => {
         const useBuildMode = hasReferences
@@ -220,8 +221,6 @@ const duel = async args => {
         },
       }
     }
-    const hasReferences =
-      Array.isArray(tsconfig.references) && tsconfig.references.length > 0
     const runPrimaryBuild = () => {
       return runBuild(
         configPath,
