@@ -128,7 +128,7 @@ const duel = async args => {
       })
     }
     const pkgDir = dirname(pkg.path)
-    const pkgRoot = resolve(pkgDir)
+    const packageRoot = resolve(pkgDir)
     const mainPath = pkg.packageJson.main
     const mainDefaultKind = mainPath?.endsWith('.cjs') ? 'require' : 'import'
     const outDir = tsconfig.compilerOptions?.outDir ?? 'dist'
@@ -139,9 +139,14 @@ const duel = async args => {
       projectDir,
       isCjsBuild ? join(outDir, 'cjs') : join(outDir, 'esm'),
     )
-    const parentRoot = dirname(pkgRoot)
-    const workspaceRoot = dirname(parentRoot)
-    const allowedConfigRoots = [pkgRoot, parentRoot, workspaceRoot].filter(
+    /*
+     * Workspace boundary: package root, its parent (e.g., packages/), and repo root.
+     * Chosen to make single-package and typical monorepo base-config extends “just work”
+     * even without TS references, while still excluding node_modules.
+     */
+    const packagesRoot = dirname(packageRoot)
+    const repoRoot = dirname(packagesRoot)
+    const allowedConfigRoots = [packageRoot, packagesRoot, repoRoot].filter(
       (root, idx, arr) => arr.indexOf(root) === idx,
     )
     const isInAllowedRoots = absPath =>
@@ -583,14 +588,6 @@ const duel = async args => {
             }
 
             const rel = toWorkspaceRelative(normalized)
-
-            if (rel === null) {
-              logError(
-                `Referenced config or source is outside the allowed workspace boundary and cannot be patched: ${file}. Move it inside one of: ${allowedConfigRoots.join(', ')} so Duel can create an isolated shadow build.`,
-              )
-              process.exit(1)
-            }
-
             const dest = join(subDir, rel)
 
             await mkdir(dirname(dest), { recursive: true })
