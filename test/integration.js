@@ -2,12 +2,13 @@ import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
-import { rm, readFile, rename, writeFile } from 'node:fs/promises'
+import { rm, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
 import spawn from 'cross-spawn'
+import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 
 import { duel } from '../src/duel.js'
 
@@ -21,6 +22,10 @@ const cjsProject = resolve(__dirname, '__fixtures__/cjsProject')
 const extended = resolve(__dirname, '__fixtures__/extended')
 const dualHazard = resolve(__dirname, '__fixtures__/dualHazard')
 const dualError = resolve(__dirname, '__fixtures__/compileErrorsDual')
+const sourcemapProject = resolve(__dirname, '__fixtures__/sourcemaps')
+const sourcemapDist = join(sourcemapProject, 'dist')
+const nomapProject = resolve(__dirname, '__fixtures__/nomaps')
+const nomapDist = join(nomapProject, 'dist')
 const plainDist = join(plain, 'dist')
 const modesDist = join(modes, 'dist')
 const proDist = join(project, 'dist')
@@ -81,6 +86,15 @@ const logged = (spy, index) => {
 
   return stripBadge(stripAnsi(strings.at(-1) ?? ''))
 }
+const findPosition = (content, token) => {
+  const idx = content.indexOf(token)
+  assert.notEqual(idx, -1)
+  const pre = content.slice(0, idx).split('\n')
+  const line = pre.length
+  const column = pre.at(-1).length
+
+  return { line, column }
+}
 
 describe('duel', () => {
   before(async () => {
@@ -92,6 +106,8 @@ describe('duel', () => {
     await rmDist(extDist)
     await rmDist(projectRefsDist)
     await rmDist(hazardDist)
+    await rmDist(sourcemapDist)
+    await rmDist(nomapDist)
   })
 
   it('prints options help', async t => {
@@ -175,6 +191,44 @@ describe('duel', () => {
 
       await rmDist(plainDist)
     }
+  })
+
+  it('composes source maps through rewrites', async t => {
+    t.after(async () => {
+      await rmDist(sourcemapDist)
+    })
+
+    await duel(['-p', join(sourcemapProject, 'tsconfig.json')])
+
+    const outFile = join(sourcemapDist, 'cjs', 'index.cjs')
+    const outMapFile = `${outFile}.map`
+    const dtsMapFile = join(sourcemapDist, 'index.d.ts.map')
+
+    const code = await readFile(outFile, 'utf8')
+    assert.match(code, /sourceMappingURL=index\.cjs\.map/)
+
+    const map = JSON.parse(await readFile(outMapFile, 'utf8'))
+    assert.equal(map.file, 'index.cjs')
+
+    const traced = originalPositionFor(new TraceMap(map), findPosition(code, 'greet'))
+    assert.ok(traced.source?.endsWith('src/index.ts'))
+    assert.ok((traced.line ?? 0) > 0)
+
+    const dtsMap = JSON.parse(await readFile(dtsMapFile, 'utf8'))
+    assert.equal(dtsMap.file, 'index.d.ts')
+  })
+
+  it('does not emit maps when inputs lack them', async t => {
+    t.after(async () => {
+      await rmDist(nomapDist)
+    })
+
+    await duel(['-p', join(nomapProject, 'tsconfig.json')])
+
+    const outFile = join(nomapDist, 'cjs', 'index.cjs')
+    const outMapFile = `${outFile}.map`
+
+    await assert.rejects(stat(outMapFile))
   })
 
   it('lowers syntax only when --mode full', async t => {
