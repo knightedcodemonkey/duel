@@ -15,6 +15,14 @@ This document outlines ways to speed up @knighted/duel while preserving the guar
 - Module resolution cache: add an LRU for module resolution during reference traversal to cut duplicate lookups in large workspaces.
 - Profiling: add `--profile` to report timing for prep, primary emit, secondary emit, rewrites, and cache hits/misses.
 
+## Parallel builds (opt-in flag)
+
+- Default remains sequential: safest for CI and low-memory machines.
+- Isolation is already in place (shadow workspace, separate `tsBuildInfoFile`, separate outDirs), so concurrent primary/dual builds are feasible.
+- Run shadow setup in parallel with the primary build to hide latency without spawning two `tsc` processes; gate full `tsc` concurrency behind `--parallel`.
+- Guardrails: ensure `copyFilesToTemp` continues to ignore `outDir` to avoid copying in-flight artifacts; run `collectCompileFilesWithReferences` before/alongside primary to get a consistent source view.
+- Surface CPU/memory risk in logs when `--parallel` is used; consider auto-disabling on constrained hosts (heuristic: core count, free memory).
+
 ## Validation and safety nets
 
 - Keep exports validation (`--exports-validate`) and specifier rewrite tests; add fixtures if emit paths change.

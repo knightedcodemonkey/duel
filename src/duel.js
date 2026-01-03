@@ -590,16 +590,7 @@ const duel = async args => {
 
           const dest = join(subDir, relative(projectRoot, configFile))
 
-          let parsed = null
-          try {
-            parsed = parseTsconfig(dest)
-          } catch (err) {
-            logError(
-              `Referenced tsconfig at ${dest} could not be parsed; move it inside the project or fix the file so Duel can patch it. Original error: ${err?.message ?? err}`,
-            )
-            process.exit(1)
-          }
-
+          const parsed = parseTsconfig(dest)
           const cfg = parsed?.tsconfig ?? parsed
 
           if (!cfg || typeof cfg !== 'object') continue
