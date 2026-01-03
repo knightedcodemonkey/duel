@@ -12,10 +12,6 @@ import {
 } from '@jridgewell/gen-mapping'
 import { transform } from '@knighted/module'
 
-/**
- * Rewrites specifiers and file extensions for dual builds.
- * Currently mirrors existing behavior and provides hooks for future validation.
- */
 const loadMapIfExists = async path => {
   try {
     const raw = await readFile(path, 'utf8')
@@ -120,21 +116,30 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
       }
 
       const outMapPath = `${outFilename}.map`
+      const mapFile = basename(outMapPath)
       let output = code.toString()
       let nextMap = null
 
-      if (existingMap && mutated) {
-        const rewriteMap = code.generateMap({
-          hires: true,
-          includeContent: true,
-          file: outFilename,
-          source: filename,
-        })
-        nextMap = composeSourceMaps(rewriteMap, existingMap)
+      /*
+       * If an upstream map exists, carry it forward when we rename the file,
+       * and compose when the content was mutated. If no upstream map exists,
+       * do not emit a new one.
+       */
+      if (existingMap) {
+        if (mutated) {
+          const rewriteMap = code.generateMap({
+            hires: true,
+            includeContent: true,
+            file: outFilename,
+            source: filename,
+          })
+          nextMap = composeSourceMaps(rewriteMap, existingMap)
+        } else {
+          nextMap = { ...existingMap }
+        }
       }
 
       if (nextMap) {
-        const mapFile = basename(outMapPath)
         nextMap.file = basename(outFilename)
         output = updateSourceMappingUrl(output, mapFile)
         await writeFile(outMapPath, JSON.stringify(nextMap))
@@ -144,7 +149,9 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
 
       if (outFilename !== filename) {
         await rm(filename, { force: true })
-        await rm(existingMapPath, { force: true })
+        if (existingMap) {
+          await rm(existingMapPath, { force: true })
+        }
       }
 
       continue
@@ -228,6 +235,10 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
     let output = typeof nextCode === 'string' ? nextCode : String(nextCode)
     let nextMap = null
 
+    /*
+     * Compose the rewrite map with the upstream map when present; if the
+     * input had no map, we do not emit a new one.
+     */
     if (rewriteMap && existingMap) {
       nextMap = composeSourceMaps(rewriteMap, existingMap)
     }
@@ -243,7 +254,9 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
 
     if (outFilename !== filename) {
       await rm(filename, { force: true })
-      await rm(existingMapPath, { force: true })
+      if (existingMap) {
+        await rm(existingMapPath, { force: true })
+      }
     }
 
     rewrites.push({ file: filename, kind: 'source' })
