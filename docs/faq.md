@@ -25,6 +25,10 @@ Dual packages can load twice if a project mixes `import` and `require` for the s
 
 Project scope runs a pre-pass before builds so hazards surface once per package, even if the conflicting usage spans multiple files.
 
+## Why does Duel error on references outside the project or on unparseable tsconfig files?
+
+Duel copies and patches every referenced `tsconfig` into a shadow workspace so emit targets and `.tsbuildinfo` stay isolated. If a reference points outside the project (or its parent when using project references), or if a referenced config cannot be parsed, Duel cannot safely patch it and now fails fast with a clear error. Move the reference inside the root/parent workspace and fix the config so the build can proceed.
+
 ## Why might Duel fall back to unbounded source paths on Windows?
 
 Duel filters TypeScript source paths to prefer files inside your project root. On Windows, certain edge cases in path normalization can cause all paths to be incorrectly filtered out, triggering a fallback to the full unbounded list. Known scenarios include:

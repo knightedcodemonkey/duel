@@ -542,10 +542,10 @@ const duel = async args => {
               if (!altRel.startsWith('..')) {
                 rel = altRel
               } else {
-                logWarn(
-                  `Skipping copy for ${file} outside of project root ${projectRoot}`,
+                logError(
+                  `Referenced config or source is outside the project root and cannot be patched: ${file}. Move it inside ${projectRoot} (or its parent for project references) so Duel can create an isolated shadow build.`,
                 )
-                continue
+                process.exit(1)
               }
             }
 
@@ -590,16 +590,7 @@ const duel = async args => {
 
           const dest = join(subDir, relative(projectRoot, configFile))
 
-          let parsed = null
-          try {
-            parsed = parseTsconfig(dest)
-          } catch (err) {
-            logWarn(
-              `Skipping referenced tsconfig at ${dest} (parse failed): ${err?.message ?? err}`,
-            )
-            continue
-          }
-
+          const parsed = parseTsconfig(dest)
           const cfg = parsed?.tsconfig ?? parsed
 
           if (!cfg || typeof cfg !== 'object') continue

@@ -37,6 +37,7 @@ const exportsRes = resolve(__dirname, '__fixtures__/exportsResolution')
 const exportsResDist = join(exportsRes, 'dist')
 const projectRefs = resolve(__dirname, '__fixtures__/projectRefs')
 const projectRefsDist = join(projectRefs, 'dist')
+const failFastOutside = resolve(__dirname, '__fixtures__/failFastOutside/project')
 let projectRefsInstalled = false
 const itCI = process.env.CI ? it : it.skip
 
@@ -1163,6 +1164,34 @@ describe('duel', () => {
     })
     await duel(['-p', 'test/__fixtures__/esmProject/tsconfig.json', '--pkg-dir', '/'])
     assert.equal(logged(spy, 0), 'No package.json file found.')
+  })
+
+  it('fails fast when a referenced tsconfig is outside the project/parent root', async t => {
+    const spyExit = t.mock.method(process, 'exit')
+    const spyLog = t.mock.method(global.console, 'log')
+
+    class ExitError extends Error {
+      constructor(code) {
+        super('process.exit')
+        this.code = code
+      }
+    }
+
+    spyExit.mock.mockImplementation(code => {
+      throw new ExitError(code)
+    })
+
+    await assert.rejects(
+      async () => {
+        await duel(['-p', failFastOutside])
+      },
+      err => err instanceof ExitError && err.code === 1,
+    )
+
+    const messages = spyLog.mock.calls.map((_, i) => logged(spyLog, i))
+    assert.ok(
+      messages.some(m => m.includes('outside the project root and cannot be patched')),
+    )
   })
 
   it('supports extended configs', async t => {
