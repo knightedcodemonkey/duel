@@ -1,0 +1,6 @@
+{
+  "name": "monorepo-extends-a",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js"
+}
