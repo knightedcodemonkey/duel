@@ -19,6 +19,7 @@ export default [
     rules: {
       'no-console': 'error',
       'no-shadow': 'error',
+      'no-use-before-define': 'error',
       'n/no-process-exit': 'off',
       'n/hashbang': [
         'error',
