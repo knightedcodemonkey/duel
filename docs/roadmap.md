@@ -6,6 +6,7 @@
 - Memoize resolver existence checks to trim repeated sync fs hits during rewrite, if profiling shows it matters.
 - Optionally prune stale `_duel_*` temp workspaces on startup (behind env flag and skipped in CI) to keep project roots tidy.
 - Deprecate `copyMode=full` (announce as compatibility-only, plan removal if unused) and favor the selective copy path by default.
+- Clarify workspace boundary policy: keep the widened default (pkg dir, parent, repo root) for “just works” single-package/monorepo support; consider conditional inclusion of the repo root (e.g., only when an extends lands there or when a workspace root is detected) to tighten surface area in a future iteration.
 
 ## Optimize temp-copy overhead
 

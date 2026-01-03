@@ -26,6 +26,10 @@ const sourcemapProject = resolve(__dirname, '__fixtures__/sourcemaps')
 const sourcemapDist = join(sourcemapProject, 'dist')
 const nomapProject = resolve(__dirname, '__fixtures__/nomaps')
 const nomapDist = join(nomapProject, 'dist')
+const monorepoExt = resolve(__dirname, '__fixtures__/monorepo-extends')
+const monorepoExtPkgA = resolve(monorepoExt, 'packages/a')
+const monorepoExtDist = join(monorepoExtPkgA, 'dist')
+const monorepoExtRootDist = join(monorepoExt, 'dist')
 const plainDist = join(plain, 'dist')
 const modesDist = join(modes, 'dist')
 const proDist = join(project, 'dist')
@@ -109,6 +113,8 @@ describe('duel', () => {
     await rmDist(hazardDist)
     await rmDist(sourcemapDist)
     await rmDist(nomapDist)
+    await rmDist(monorepoExtDist)
+    await rmDist(monorepoExtRootDist)
   })
 
   it('prints options help', async t => {
@@ -1190,7 +1196,29 @@ describe('duel', () => {
 
     const messages = spyLog.mock.calls.map((_, i) => logged(spyLog, i))
     assert.ok(
-      messages.some(m => m.includes('outside the project root and cannot be patched')),
+      messages.some(m =>
+        m.includes('outside the allowed workspace boundary and cannot be patched'),
+      ),
+    )
+  })
+
+  it('builds when tsconfig extends a workspace base config in a monorepo', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(monorepoExtDist)
+      await rmDist(monorepoExtRootDist)
+    })
+
+    await duel(['-p', join(monorepoExtPkgA, 'tsconfig.json')])
+
+    assert.ok(existsSync(join(monorepoExtDist, 'index.js')))
+    assert.ok(existsSync(join(monorepoExtDist, 'cjs/index.cjs')))
+
+    const messages = spy.mock.calls.map((_, i) => logged(spy, i))
+    assert.ok(
+      !messages.some(m => m.includes('Skipping external extended tsconfig')),
+      'should not warn about skipping workspace-local extended tsconfig',
     )
   })
 
