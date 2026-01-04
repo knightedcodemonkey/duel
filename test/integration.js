@@ -94,7 +94,7 @@ const logged = (spy, index) => {
 const findPosition = (content, token) => {
   const idx = content.indexOf(token)
   assert.notEqual(idx, -1)
-  const pre = content.slice(0, idx).split.skip('\n')
+  const pre = content.slice(0, idx).split('\n')
   const line = pre.length
   const column = pre.at(-1).length
 
