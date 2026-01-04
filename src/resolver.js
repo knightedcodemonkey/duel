@@ -83,11 +83,12 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
     dualPackageHazardScope,
     onDiagnostics,
     rewritePolicy = 'safe',
-    validateSpecifiers = false,
+    validateSpecifiers,
     onRewrite = () => {},
     onWarn = () => {},
   } = options
-
+  const validateSpecifiersFinal =
+    validateSpecifiers ?? (rewritePolicy === 'skip' ? false : true)
   const rewrites = []
 
   for (const filename of filenames) {
@@ -183,7 +184,7 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
         return next
       }
 
-      if (validateSpecifiers) {
+      if (validateSpecifiersFinal) {
         const fileDir = dirname(filename)
         const base = collapsed.replace(/\.js$/, '')
         const candidates = []

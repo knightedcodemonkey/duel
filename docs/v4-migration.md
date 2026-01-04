@@ -38,7 +38,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 ## New/Notable Flags
 
 - `--rewrite-policy [safe|warn|skip]` (default: `safe`)
-- `--validate-specifiers` (defaults to `true` when policy is `safe`; otherwise `false`)
+- `--validate-specifiers` (derived from `--rewrite-policy`: on for `safe|warn`, off for `skip`; advanced override only)
 - `--detect-dual-package-hazard [off|warn|error]` (default: `warn`)
 - `--dual-package-hazard-scope [file|project]` (default: `file`)
 - `--dual-package-hazard-allowlist <pkg1,pkg2>`

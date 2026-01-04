@@ -52,7 +52,7 @@ const cliOptions = [
   },
   {
     long: 'validate-specifiers',
-    desc: 'Validate rewritten specifiers against outputs.',
+    desc: 'Validate rewritten specifiers against outputs (policy-derived by default).',
   },
   {
     long: 'detect-dual-package-hazard',
@@ -145,7 +145,6 @@ const init = async args => {
         },
         'validate-specifiers': {
           type: 'boolean',
-          default: false,
         },
         'detect-dual-package-hazard': {
           type: 'string',
@@ -311,7 +310,27 @@ const init = async args => {
 
       let modulesFinal = false
       let transformSyntaxFinal = false
-      const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
+      const validateSpecifiersProvided = args.some(
+        arg =>
+          arg === '--validate-specifiers' ||
+          arg === '--no-validate-specifiers' ||
+          arg.startsWith('--validate-specifiers='),
+      )
+      const validateSpecifiersDefault = rewritePolicy === 'skip' ? false : true
+
+      if (
+        rewritePolicy === 'safe' &&
+        validateSpecifiersProvided &&
+        validateSpecifiers === false
+      ) {
+        logError('--validate-specifiers cannot be disabled when --rewrite-policy is safe')
+
+        return false
+      }
+
+      const validateSpecifiersFinal = validateSpecifiersProvided
+        ? validateSpecifiers
+        : validateSpecifiersDefault
 
       if (mode) {
         if (mode === 'none') {
