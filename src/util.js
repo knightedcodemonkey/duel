@@ -604,6 +604,7 @@ export {
   ensureDotSlash,
   createTempCleanup,
   registerCleanupHandlers,
+  hazardPackageFromMessage,
   filterDualPackageDiagnostics,
   processDiagnosticsForFile,
   exitOnDiagnostics,
