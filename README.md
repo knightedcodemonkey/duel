@@ -151,3 +151,4 @@ Fortunately, Node.js has added `--experimental-require-module` so that you can [
 - [docs/faq.md](docs/faq.md)
 - [docs/exports.md](docs/exports.md)
 - [docs/migrate-v2-v3.md](docs/migrate-v2-v3.md)
+- [docs/migrate-v3-v4.md](docs/v4-migration.md)
