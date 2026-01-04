@@ -490,6 +490,30 @@ const generateExports = async options => {
 
   return { exportsMap }
 }
+const hazardPackageFromMessage = message => {
+  if (!message) return null
+
+  const match = /Package '([^']+)'/.exec(message)
+
+  return match?.[1] ?? null
+}
+const filterDualPackageDiagnostics = (diagnostics, allowlist = new Set()) => {
+  if (!diagnostics?.length) return []
+  const allowlistSet = allowlist instanceof Set ? allowlist : new Set(allowlist)
+
+  if (!allowlistSet.size) return diagnostics
+
+  return diagnostics.filter(diag => {
+    if (!diag) return false
+    if (!diag.code?.startsWith('dual-package')) return true
+
+    const pkg = hazardPackageFromMessage(diag.message ?? '')
+
+    if (!pkg) return true
+
+    return !allowlistSet.has(pkg)
+  })
+}
 const processDiagnosticsForFile = (diagnostics, projectDir, logDiagnosticsFn) => {
   if (!diagnostics.length) return false
   return logDiagnosticsFn(diagnostics, projectDir)
@@ -580,6 +604,7 @@ export {
   ensureDotSlash,
   createTempCleanup,
   registerCleanupHandlers,
+  filterDualPackageDiagnostics,
   processDiagnosticsForFile,
   exitOnDiagnostics,
   maybeLinkNodeModules,

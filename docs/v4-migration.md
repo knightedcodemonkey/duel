@@ -10,10 +10,11 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
   - **IMPORTANT:** The temp-copy flow adds some I/O for large repos (copying sources/reference packages and running transforms there). `node_modules` is skipped; when references exist, existing `dist` may be reused. Very large projects may see modestly slower runs compared to the old in-place mutation.
 - **Cache/shadow location is project-local.** `.duel-cache` now lives under the project root (e.g., `<project>/.duel-cache`) instead of the parent directory to avoid “filesystem invasion.” Temp shadow workspaces and tsbuildinfo cache files stay inside that folder. Add `.duel-cache/` to your `.gitignore`.
 - **Project references run with `tsc -b`.** When `tsconfig.json` contains references, builds switch to TypeScript build mode. Output shape can differ from `tsc -p` for some setups.
-- **Referenced configs must be patchable.** Duel now fails fast if a referenced `tsconfig` lives outside the project/parent root or cannot be parsed in the temp workspace. Move references inside the repo and fix invalid configs so both primary and dual builds stay isolated.
+- **Referenced configs must be patchable.** Duel now fails fast if a referenced `tsconfig` lives outside the allowed workspace boundary (package root, packages root, or repo root, excluding `node_modules`) or cannot be parsed in the temp workspace. Move references inside the repo and fix invalid configs so both primary and dual builds stay isolated.
 - **Dual CJS builds enforce CJS semantics.** The shadow workspace now uses `type: "commonjs"` plus `module: "NodeNext"` for the dual build, so TypeScript will error on CJS-incompatible syntax like `import.meta` unless you adjust code or opt into `--mode globals`/`--mode full` (v3 previously allowed this to slip through).
 - **Exports tooling additions.** New flags (`--exports-config`, `--exports-validate`) are available; when used, they can emit warnings or fail on invalid configs.
 - **Deprecated flags removed.** `--modules`, `--transform-syntax`, and `--target-extension` are gone; use `--mode globals` or `--mode full` instead.
+- **Copy strategy defaults to sources.** `--copy-mode sources` is the default (minimal temp copy of inputs/configs). Use `--copy-mode full` to mirror the entire project like v3.
 
 ## Restoring v3-like Behavior
 

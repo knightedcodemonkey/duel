@@ -78,6 +78,10 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
     target,
     ext,
     syntaxMode,
+    detectDualPackageHazard,
+    dualPackageHazardAllowlist,
+    dualPackageHazardScope,
+    onDiagnostics,
     rewritePolicy = 'safe',
     validateSpecifiers = false,
     onRewrite = () => {},
@@ -221,6 +225,10 @@ const rewriteSpecifiersAndExtensions = async (filenames, options = {}) => {
       rewriteSpecifier,
       transformSyntax: syntaxMode,
       sourceMap: true,
+      diagnostics: diag => onDiagnostics?.(diag, filename),
+      ...(detectDualPackageHazard !== undefined ? { detectDualPackageHazard } : {}),
+      ...(dualPackageHazardAllowlist !== undefined ? { dualPackageHazardAllowlist } : {}),
+      ...(dualPackageHazardScope !== undefined ? { dualPackageHazardScope } : {}),
       ...(outFilename === filename ? { inPlace: true } : { out: outFilename }),
     }
 

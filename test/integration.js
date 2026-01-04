@@ -411,6 +411,56 @@ describe('duel', () => {
     assert.ok(existsSync(resolve(plainDist, 'cjs/index.cjs')))
   })
 
+  it('emits dual-package hazard warnings when not allowlisted', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    await rmDist(hazardDist)
+
+    await duel([
+      '-p',
+      'test/__fixtures__/dualHazard/tsconfig.json',
+      '--detect-dual-package-hazard',
+      'warn',
+      '--dual-package-hazard-scope',
+      'project',
+    ])
+
+    const messages = spy.mock.calls.map((_, idx) => logged(spy, idx)).filter(Boolean)
+    assert.ok(
+      messages.some(msg => msg.includes("Package 'hazard-lib' is loaded via import")),
+    )
+  })
+
+  it('suppresses dual-package hazard warnings when allowlisted', async t => {
+    const spy = t.mock.method(global.console, 'log')
+
+    t.after(async () => {
+      await rmDist(hazardDist)
+    })
+
+    await rmDist(hazardDist)
+
+    await duel([
+      '-p',
+      'test/__fixtures__/dualHazard/tsconfig.json',
+      '--detect-dual-package-hazard',
+      'warn',
+      '--dual-package-hazard-scope',
+      'project',
+      '--dual-package-hazard-allowlist',
+      'hazard-lib',
+    ])
+
+    const messages = spy.mock.calls.map((_, idx) => logged(spy, idx)).filter(Boolean)
+    assert.ok(
+      messages.every(msg => !msg.includes("Package 'hazard-lib' is loaded via import")),
+    )
+  })
+
   it('generates exports when requested', async t => {
     const pkgPath = resolve(project, 'package.json')
     const originalPkg = await readFile(pkgPath, 'utf8')

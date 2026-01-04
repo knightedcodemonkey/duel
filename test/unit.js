@@ -25,6 +25,7 @@ import {
   generateExports,
   stripKnownExt,
   ensureDotSlash,
+  filterDualPackageDiagnostics,
   processDiagnosticsForFile,
   exitOnDiagnostics,
   maybeLinkNodeModules,
@@ -795,5 +796,34 @@ describe('duel internals', () => {
 
       rmSync(tmp, { recursive: true, force: true })
     })
+  })
+
+  it('filters dual-package diagnostics via allowlist', () => {
+    const allowlist = new Set(['react'])
+    const diagnostics = [
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message:
+          "Package 'react' is referenced via root specifier 'react' and subpath(s) react/jsx-runtime; mixing them loads separate module instances.",
+      },
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message:
+          "Package 'vue' is referenced via root specifier 'vue' and subpath(s) vue/jsx-runtime; mixing them loads separate module instances.",
+      },
+      {
+        level: 'warning',
+        code: 'idiomatic-exports-fallback',
+        message: 'Unrelated diagnostic stays.',
+      },
+    ]
+
+    const filtered = filterDualPackageDiagnostics(diagnostics, allowlist)
+
+    assert.equal(filtered.length, 2)
+    assert.ok(filtered.some(diag => diag.message.includes("Package 'vue'")))
+    assert.ok(filtered.some(diag => diag.code === 'idiomatic-exports-fallback'))
   })
 })

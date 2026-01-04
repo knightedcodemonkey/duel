@@ -90,7 +90,7 @@ Assuming an `outDir` of `dist`, running the above will create `dist/esm` and `di
 `tsc` is asymmetric: `import.meta` globals fail in a CJS-targeted build, but CommonJS globals like `__filename`/`__dirname` pass when targeting ESM, causing runtime errors in the compiled output. See [TypeScript#58658](https://github.com/microsoft/TypeScript/issues/58658). Use `--mode` to mitigate:
 
 - `--mode globals` [rewrites module globals](https://github.com/knightedcodemonkey/module/blob/main/docs/globals-only.md#rewrites-at-a-glance).
-- `--mode full` adds syntax lowering _in addition to_ the globals rewrite. TS sources keep a pre-`tsc` guard (`transformSyntax: "globals-only"`) so TypeScript controls declaration emit; JS/JSX and the dual CJS rewrite path are fully lowered. See the [mode matrix](docs/mode-matrix.md) for details.
+- `--mode full` adds syntax lowering _in addition to_ the globals rewrite. TS goes through globals-only pre-processing before `tsc` (so declaration emit stays correct), while JS/JSX and the dual CJS rewrite path are fully lowered. See the [mode matrix](docs/mode-matrix.md) for details.
 
 ```json
 "scripts": {
@@ -111,6 +111,7 @@ When `--mode` is enabled, `duel` copies sources and runs [`@knighted/module`](ht
 Mixed `import`/`require` of the same dual package (especially when conditional exports differ) can create two module instances. `duel` exposes the detector from `@knighted/module`:
 
 - `--detect-dual-package-hazard [off|warn|error]` (default `warn`): emit diagnostics; `error` exits non-zero.
+- `--dual-package-hazard-allowlist <pkg>[,<pkg>...]`: comma-separated packages to ignore for hazard reporting (e.g., `react`).
 - `--dual-package-hazard-scope [file|project]` (default `file`): per-file checks or a project-wide pre-pass that aggregates package usage across all compiled sources before building.
 
 Project scope is helpful in monorepos or hoisted installs where hazards surface only when looking across files.
@@ -128,7 +129,8 @@ These are the CLI options `duel` supports to work alongside your project's `tsco
 - `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
 - `--rewrite-policy [safe|warn|skip]` Control how specifier rewrites behave when a matching target is missing (`safe` warns and skips, `warn` rewrites and warns, `skip` leaves specifiers untouched).
 - `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
-- `--detect-dual-package-hazard [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero.
+- `--detect-dual-package-hazard, -H [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero. If project-scope checks lack file paths, or file-scope checks return pathless diagnostics, Duel falls back to file-scope reporting during transforms so diagnostics include locations.
+- `--dual-package-hazard-allowlist <pkg>[,<pkg>...]` Comma-separated packages to ignore when reporting dual package hazards (e.g., `react`).
 - `--dual-package-hazard-scope [file|project]` Run hazard checks per file (default) or aggregate across the project.
 - `--copy-mode [sources|full]` Temp copy strategy. `sources` (default) copies only files participating in the build (plus configs); `full` mirrors the previous whole-project copy.
 - `--verbose, -V` Verbose logging.
