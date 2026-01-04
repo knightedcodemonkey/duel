@@ -826,4 +826,74 @@ describe('duel internals', () => {
     assert.ok(filtered.some(diag => diag.message.includes("Package 'vue'")))
     assert.ok(filtered.some(diag => diag.code === 'idiomatic-exports-fallback'))
   })
+
+  it('returns original diagnostics when allowlist is empty', () => {
+    const diagnostics = [{ code: 'dual-package-subpath', message: "Package 'react'" }]
+    const filtered = filterDualPackageDiagnostics(diagnostics, new Set())
+
+    assert.strictEqual(filtered, diagnostics)
+  })
+
+  it('accepts array allowlists', () => {
+    const diagnostics = [
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message:
+          "Package 'react' is referenced via root specifier 'react' and subpath(s) react/jsx-runtime; mixing them loads separate module instances.",
+      },
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message:
+          "Package 'vue' is referenced via root specifier 'vue' and subpath(s) vue/jsx-runtime; mixing them loads separate module instances.",
+      },
+    ]
+
+    const filtered = filterDualPackageDiagnostics(diagnostics, ['react'])
+
+    assert.equal(filtered.length, 1)
+    assert.ok(filtered.every(diag => diag.message.includes("Package 'vue'")))
+  })
+
+  it('keeps diagnostics when package name cannot be extracted', () => {
+    const allowlist = new Set(['react'])
+    const diagnostics = [
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message: 'A dual-package hazard occurred somewhere.',
+      },
+    ]
+
+    const filtered = filterDualPackageDiagnostics(diagnostics, allowlist)
+
+    assert.equal(filtered.length, 1)
+    assert.equal(filtered[0].message, diagnostics[0].message)
+  })
+
+  it('handles diagnostics with missing messages gracefully', () => {
+    const allowlist = new Set(['react'])
+    const diagnostics = [
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message: null,
+      },
+      {
+        level: 'warning',
+        code: 'dual-package-subpath',
+        message: undefined,
+      },
+    ]
+
+    const filtered = filterDualPackageDiagnostics(diagnostics, allowlist)
+
+    assert.equal(filtered.length, 2)
+  })
+
+  it('returns empty array for null or undefined diagnostics input', () => {
+    assert.deepEqual(filterDualPackageDiagnostics(null), [])
+    assert.deepEqual(filterDualPackageDiagnostics(undefined), [])
+  })
 })

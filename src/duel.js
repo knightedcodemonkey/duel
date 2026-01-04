@@ -24,6 +24,7 @@ import {
   readExportsConfig,
   processDiagnosticsForFile,
   exitOnDiagnostics,
+  hazardPackageFromMessage,
   filterDualPackageDiagnostics,
   maybeLinkNodeModules,
   runExportsValidationBlock,
@@ -46,8 +47,7 @@ const logDiagnostics = (diags, projectDir, hazardAllowlist = null) => {
 
   for (const diag of diags) {
     if (hazardAllowlist && diag?.code?.startsWith('dual-package') && diag?.message) {
-      const match = /Package '([^']+)'/.exec(diag.message)
-      const pkg = match?.[1]
+      const pkg = hazardPackageFromMessage(diag.message)
 
       if (pkg && hazardAllowlist.has(pkg)) continue
     }

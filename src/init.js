@@ -278,20 +278,24 @@ const init = async args => {
         return false
       }
 
-      const hazardAllowlist = dualPackageHazardAllowlist
-        ? dualPackageHazardAllowlist
-            .split(',')
-            .map(item => item.trim())
-            .filter(Boolean)
-        : []
+      const hazardAllowlistProvided = dualPackageHazardAllowlist !== undefined
+      const hazardAllowlistRaw = dualPackageHazardAllowlist ?? ''
+      const hasAllowlistContent = /[^,\s]/.test(hazardAllowlistRaw)
 
-      if (dualPackageHazardAllowlist && hazardAllowlist.length === 0) {
+      if (hazardAllowlistProvided && !hasAllowlistContent) {
         logError(
           '--dual-package-hazard-allowlist expects a comma-separated list of package names',
         )
 
         return false
       }
+
+      const hazardAllowlist = hasAllowlistContent
+        ? hazardAllowlistRaw
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : []
 
       if (!['file', 'project'].includes(dualPackageHazardScope)) {
         logError('--dual-package-hazard-scope expects one of: file | project')
