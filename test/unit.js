@@ -31,6 +31,7 @@ import {
   maybeLinkNodeModules,
   runExportsValidationBlock,
 } from '../src/util.js'
+import { init } from '../src/init.js'
 import { rewriteSpecifiersAndExtensions } from '../src/resolver.js'
 
 const makeTmp = () => mkdtempSync(join(os.tmpdir(), 'duel-unit-'))
@@ -701,9 +702,11 @@ describe('duel internals', () => {
     it('rewrites js maps when present and keeps sourceMappingURL in sync', async () => {
       const tmp = makeTmp()
       const file = join(tmp, 'a.js')
+      const dep = join(tmp, 'dep.js')
       const mapFile = `${file}.map`
       const source = 'import "./dep.js"\n//# sourceMappingURL=a.js.map\n'
       writeFileSync(file, source)
+      writeFileSync(dep, 'export const y = 1;')
       writeFileSync(
         mapFile,
         JSON.stringify({
@@ -895,5 +898,78 @@ describe('duel internals', () => {
   it('returns empty array for null or undefined diagnostics input', () => {
     assert.deepEqual(filterDualPackageDiagnostics(null), [])
     assert.deepEqual(filterDualPackageDiagnostics(undefined), [])
+  })
+
+  it('prints help and returns false when --help is passed', async () => {
+    const result = await init(['--help'])
+
+    assert.equal(result, false)
+  })
+
+  it('errors on invalid rewrite-policy value', async () => {
+    const result = await init(['--rewrite-policy', 'invalid'])
+
+    assert.equal(result, false)
+  })
+
+  it('errors on invalid hazard detection value', async () => {
+    const result = await init(['--detect-dual-package-hazard', 'nope'])
+
+    assert.equal(result, false)
+  })
+
+  it('errors on invalid copy-mode value', async () => {
+    const result = await init(['--copy-mode', 'weird'])
+
+    assert.equal(result, false)
+  })
+
+  it('errors on invalid mode value', async () => {
+    const result = await init(['--mode', 'super'])
+
+    assert.equal(result, false)
+  })
+
+  it('errors on empty hazard allowlist string', async () => {
+    const result = await init([
+      '--project',
+      'tsconfig.json',
+      '--dual-package-hazard-allowlist',
+      ' , , ',
+    ])
+
+    assert.equal(result, false)
+  })
+
+  it('errors when project directory lacks tsconfig', async () => {
+    const tmp = makeTmp()
+
+    try {
+      const result = await init(['--project', tmp])
+      assert.equal(result, false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('errors when project file is missing', async () => {
+    const missing = join(makeTmp(), 'missing', 'tsconfig.json')
+
+    const result = await init(['--project', missing])
+
+    assert.equal(result, false)
+  })
+
+  it('errors when no package.json can be found', async () => {
+    const tmp = makeTmp()
+    const tsconfigPath = join(tmp, 'tsconfig.json')
+    writeFileSync(tsconfigPath, JSON.stringify({ compilerOptions: { outDir: 'dist' } }))
+
+    try {
+      const result = await init(['--project', tsconfigPath])
+      assert.equal(result, false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
   })
 })

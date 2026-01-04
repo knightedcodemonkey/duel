@@ -32,7 +32,6 @@ describe('rewrite-policy', () => {
       target: 'commonjs',
       ext: '.cjs',
       rewritePolicy: 'safe',
-      validateSpecifiers: true,
       onWarn: msg => warnings.push(msg),
     })
 
@@ -52,7 +51,6 @@ describe('rewrite-policy', () => {
       target: 'commonjs',
       ext: '.cjs',
       rewritePolicy: 'warn',
-      validateSpecifiers: true,
       onWarn: msg => warnings.push(msg),
     })
 
@@ -72,7 +70,6 @@ describe('rewrite-policy', () => {
       target: 'commonjs',
       ext: '.cjs',
       rewritePolicy: 'skip',
-      validateSpecifiers: true,
       onWarn: msg => warnings.push(msg),
     })
 

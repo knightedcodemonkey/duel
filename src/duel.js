@@ -84,7 +84,6 @@ const duel = async args => {
       exportsConfig,
       exportsValidate,
       rewritePolicy,
-      validateSpecifiers,
       detectDualPackageHazard,
       dualPackageHazardAllowlist,
       dualPackageHazardScope,
@@ -884,7 +883,6 @@ const duel = async args => {
           dualPackageHazardAllowlist: [...hazardAllowlist],
           onDiagnostics: handleRewriteDiagnostic,
           rewritePolicy,
-          validateSpecifiers,
           onWarn: message => logWarn(message),
           onRewrite: (from, to) => logVerbose(`Rewrote specifiers in ${from} -> ${to}`),
         })
@@ -907,7 +905,6 @@ const duel = async args => {
             dualPackageHazardAllowlist: [...hazardAllowlist],
             onDiagnostics: handleRewriteDiagnostic,
             rewritePolicy,
-            validateSpecifiers,
             onWarn: message => logWarn(message),
             onRewrite: (from, to) => logVerbose(`Rewrote specifiers in ${from} -> ${to}`),
           })

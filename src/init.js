@@ -51,10 +51,6 @@ const cliOptions = [
     desc: 'Control specifier rewriting behavior.',
   },
   {
-    long: 'validate-specifiers',
-    desc: 'Validate rewritten specifiers against outputs.',
-  },
-  {
     long: 'detect-dual-package-hazard',
     short: 'H',
     value: '[off|warn|error]',
@@ -143,10 +139,6 @@ const init = async args => {
           type: 'string',
           default: 'safe',
         },
-        'validate-specifiers': {
-          type: 'boolean',
-          default: false,
-        },
         'detect-dual-package-hazard': {
           type: 'string',
           short: 'H',
@@ -197,7 +189,6 @@ const init = async args => {
       'exports-config': exportsConfig,
       'exports-validate': exportsValidate,
       'rewrite-policy': rewritePolicy,
-      'validate-specifiers': validateSpecifiers,
       'detect-dual-package-hazard': detectDualPackageHazard,
       'dual-package-hazard-allowlist': dualPackageHazardAllowlist,
       'dual-package-hazard-scope': dualPackageHazardScope,
@@ -311,7 +302,6 @@ const init = async args => {
 
       let modulesFinal = false
       let transformSyntaxFinal = false
-      const validateSpecifiersFinal = rewritePolicy === 'safe' ? true : validateSpecifiers
 
       if (mode) {
         if (mode === 'none') {
@@ -335,7 +325,6 @@ const init = async args => {
         exportsConfig,
         exportsValidate,
         rewritePolicy,
-        validateSpecifiers: validateSpecifiersFinal,
         detectDualPackageHazard,
         dualPackageHazardAllowlist: hazardAllowlist,
         dualPackageHazardScope,
