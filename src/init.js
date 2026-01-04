@@ -108,11 +108,12 @@ const printHelp = () => {
 }
 
 const init = async args => {
+  const argList = Array.isArray(args) ? args : []
   let parsed = null
 
   try {
     const { values } = parseArgs({
-      args,
+      args: argList,
       options: {
         project: {
           type: 'string',
@@ -310,7 +311,7 @@ const init = async args => {
 
       let modulesFinal = false
       let transformSyntaxFinal = false
-      const validateSpecifiersProvided = args.some(
+      const validateSpecifiersProvided = argList.some(
         arg =>
           arg === '--validate-specifiers' ||
           arg === '--no-validate-specifiers' ||
