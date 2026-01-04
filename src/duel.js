@@ -24,6 +24,8 @@ import {
   readExportsConfig,
   processDiagnosticsForFile,
   exitOnDiagnostics,
+  hazardPackageFromMessage,
+  filterDualPackageDiagnostics,
   maybeLinkNodeModules,
   runExportsValidationBlock,
   createTempCleanup,
@@ -40,10 +42,16 @@ const handleErrorAndExit = message => {
   process.exit(exitCode)
 }
 
-const logDiagnostics = (diags, projectDir) => {
+const logDiagnostics = (diags, projectDir, hazardAllowlist = null) => {
   let hasError = false
 
   for (const diag of diags) {
+    if (hazardAllowlist && diag?.code?.startsWith('dual-package') && diag?.message) {
+      const pkg = hazardPackageFromMessage(diag.message)
+
+      if (pkg && hazardAllowlist.has(pkg)) continue
+    }
+
     const loc = diag.loc ? ` [${diag.loc.start}-${diag.loc.end}]` : ''
     const rel = diag.filePath ? `${relative(projectDir, diag.filePath)}` : ''
     const location = rel ? `${rel}: ` : ''
@@ -78,6 +86,7 @@ const duel = async args => {
       rewritePolicy,
       validateSpecifiers,
       detectDualPackageHazard,
+      dualPackageHazardAllowlist,
       dualPackageHazardScope,
       verbose,
       copyMode,
@@ -227,6 +236,13 @@ const duel = async args => {
     const shadowDualOutDir = join(subDir, requireWorkspaceRelative(absoluteDualOutDir))
     const hazardMode = detectDualPackageHazard ?? 'warn'
     const hazardScope = dualPackageHazardScope ?? 'file'
+    const hazardAllowlist = new Set(
+      (dualPackageHazardAllowlist ?? []).map(entry => entry.trim()).filter(Boolean),
+    )
+    const logDiagnosticsWithAllowlist = diags =>
+      logDiagnostics(diags, projectDir, hazardAllowlist)
+    const applyHazardAllowlist = diagnostics =>
+      filterDualPackageDiagnostics(diagnostics ?? [], hazardAllowlist)
     function mapReferencesToShadow(references = [], options) {
       const { resolveRefPath, toShadowPathFn, fromDir } = options
 
@@ -506,13 +522,29 @@ const duel = async args => {
               cwd: projectDir,
             })
           : null
+      const filteredProjectHazards = projectHazards
+        ? new Map(
+            [...projectHazards.entries()].map(([key, diags]) => [
+              key,
+              applyHazardAllowlist(diags ?? []),
+            ]),
+          )
+        : null
+      const projectHazardsHaveDiagnostics = filteredProjectHazards
+        ? [...filteredProjectHazards.values()].some(diags => diags?.length)
+        : false
+      const projectHazardsHaveLocations = filteredProjectHazards
+        ? [...filteredProjectHazards.values()].some(diags =>
+            diags?.some(diag => diag?.filePath),
+          )
+        : false
 
-      if (projectHazards) {
+      if (filteredProjectHazards) {
         let hasHazardError = false
 
-        for (const diags of projectHazards.values()) {
+        for (const diags of filteredProjectHazards.values()) {
           if (!diags?.length) continue
-          const errored = logDiagnostics(diags, projectDir)
+          const errored = logDiagnosticsWithAllowlist(diags)
           hasHazardError = hasHazardError || errored
         }
 
@@ -732,8 +764,24 @@ const duel = async args => {
             ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
         )
-
         let transformDiagnosticsError = false
+        /**
+         * If project-scope hazards didn't surface file paths, fall back to
+         * file-scope detection during the transform pass so we can emit
+         * per-file diagnostics. Otherwise, keep project scope to avoid
+         * duplicate warnings.
+         */
+        const shouldFallbackToFileScope =
+          hazardScope === 'project' &&
+          projectHazardsHaveDiagnostics &&
+          !projectHazardsHaveLocations
+        const transformHazardScope = shouldFallbackToFileScope ? 'file' : hazardScope
+        const transformHazardMode =
+          hazardScope === 'project'
+            ? shouldFallbackToFileScope
+              ? hazardMode
+              : 'off'
+            : hazardMode
 
         for (const file of toTransform) {
           if (file.split(/[/\\]/).includes('node_modules')) continue
@@ -746,17 +794,23 @@ const duel = async args => {
             out: file,
             target: isCjsBuild ? 'commonjs' : 'module',
             transformSyntax: transformSyntaxMode,
-            // Project-level hazards are collected above; disable file-scope repeats during transform.
-            detectDualPackageHazard: hazardScope === 'project' ? 'off' : hazardMode,
-            dualPackageHazardScope: hazardScope,
+            detectDualPackageHazard: transformHazardMode,
+            dualPackageHazardScope: transformHazardScope,
+            dualPackageHazardAllowlist: [...hazardAllowlist],
             cwd: projectDir,
             diagnostics: diag => diagnostics.push(diag),
           })
 
+          const normalizedDiagnostics = diagnostics.map(diag =>
+            !diag?.filePath && transformHazardScope === 'file'
+              ? { ...diag, filePath: file }
+              : diag,
+          )
+          const filteredDiagnostics = applyHazardAllowlist(normalizedDiagnostics)
           const errored = processDiagnosticsForFile(
-            diagnostics,
+            filteredDiagnostics,
             projectDir,
-            logDiagnostics,
+            logDiagnosticsWithAllowlist,
           )
           transformDiagnosticsError = transformDiagnosticsError || errored
         }
@@ -810,11 +864,25 @@ const duel = async args => {
           },
         )
         const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
+        let rewriteDiagnosticsError = false
+        const handleRewriteDiagnostic = diag => {
+          const filtered = applyHazardAllowlist([diag])
+          const errored = processDiagnosticsForFile(
+            filtered,
+            projectDir,
+            logDiagnosticsWithAllowlist,
+          )
+          rewriteDiagnosticsError = rewriteDiagnosticsError || errored
+        }
 
         await rewriteSpecifiersAndExtensions(filenames, {
           target: dualTarget,
           ext: dualTargetExt,
           syntaxMode: rewriteSyntaxMode,
+          detectDualPackageHazard: hazardMode,
+          dualPackageHazardScope: hazardScope,
+          dualPackageHazardAllowlist: [...hazardAllowlist],
+          onDiagnostics: handleRewriteDiagnostic,
           rewritePolicy,
           validateSpecifiers,
           onWarn: message => logWarn(message),
@@ -834,12 +902,18 @@ const duel = async args => {
             ext: '.cjs',
             // Always lower syntax for primary CJS output when dirs mode rewrites primary build.
             syntaxMode: true,
+            detectDualPackageHazard: hazardMode,
+            dualPackageHazardScope: hazardScope,
+            dualPackageHazardAllowlist: [...hazardAllowlist],
+            onDiagnostics: handleRewriteDiagnostic,
             rewritePolicy,
             validateSpecifiers,
             onWarn: message => logWarn(message),
             onRewrite: (from, to) => logVerbose(`Rewrote specifiers in ${from} -> ${to}`),
           })
         }
+
+        exitOnDiagnostics(rewriteDiagnosticsError)
 
         const esmRoot = isCjsBuild ? primaryOutDir : absoluteDualOutDir
         const cjsRoot = isCjsBuild ? absoluteDualOutDir : primaryOutDir

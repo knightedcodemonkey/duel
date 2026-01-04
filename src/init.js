@@ -61,6 +61,11 @@ const cliOptions = [
     desc: 'Detect mixed import/require use of dual packages.',
   },
   {
+    long: 'dual-package-hazard-allowlist',
+    value: '[pkg1,pkg2]',
+    desc: 'Comma-separated packages to ignore for dual package hazard checks.',
+  },
+  {
     long: 'dual-package-hazard-scope',
     value: '[file|project]',
     desc: 'Scope for dual package hazard detection.',
@@ -147,6 +152,9 @@ const init = async args => {
           short: 'H',
           default: 'warn',
         },
+        'dual-package-hazard-allowlist': {
+          type: 'string',
+        },
         'dual-package-hazard-scope': {
           type: 'string',
           default: 'file',
@@ -191,6 +199,7 @@ const init = async args => {
       'rewrite-policy': rewritePolicy,
       'validate-specifiers': validateSpecifiers,
       'detect-dual-package-hazard': detectDualPackageHazard,
+      'dual-package-hazard-allowlist': dualPackageHazardAllowlist,
       'dual-package-hazard-scope': dualPackageHazardScope,
       verbose,
       mode,
@@ -269,6 +278,25 @@ const init = async args => {
         return false
       }
 
+      const hazardAllowlistProvided = dualPackageHazardAllowlist !== undefined
+      const hazardAllowlistRaw = dualPackageHazardAllowlist ?? ''
+      const hasAllowlistContent = /[^,\s]/.test(hazardAllowlistRaw)
+
+      if (hazardAllowlistProvided && !hasAllowlistContent) {
+        logError(
+          '--dual-package-hazard-allowlist expects a comma-separated list of package names',
+        )
+
+        return false
+      }
+
+      const hazardAllowlist = hasAllowlistContent
+        ? hazardAllowlistRaw
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : []
+
       if (!['file', 'project'].includes(dualPackageHazardScope)) {
         logError('--dual-package-hazard-scope expects one of: file | project')
 
@@ -309,6 +337,7 @@ const init = async args => {
         rewritePolicy,
         validateSpecifiers: validateSpecifiersFinal,
         detectDualPackageHazard,
+        dualPackageHazardAllowlist: hazardAllowlist,
         dualPackageHazardScope,
         verbose,
         copyMode,

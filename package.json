@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "4.0.0-rc.5",
+  "version": "4.0.0-rc.6",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -89,7 +89,7 @@
   "dependencies": {
     "@jridgewell/gen-mapping": "^0.3.13",
     "@jridgewell/trace-mapping": "^0.3.31",
-    "@knighted/module": "^1.5.0-rc.0",
+    "@knighted/module": "^1.5.0",
     "find-up": "^8.0.0",
     "get-tsconfig": "^4.13.0",
     "glob": "^13.0.0",
