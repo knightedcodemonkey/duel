@@ -128,7 +128,6 @@ These are the CLI options `duel` supports to work alongside your project's `tsco
 - `--exports-config` Provide a JSON file with `{ "entries": ["./dist/index.js", ...], "main": "./dist/index.js" }` to limit which outputs become exports.
 - `--exports-validate` Dry-run exports generation/validation without writing package.json; combine with `--exports` or `--exports-config` to emit after validation.
 - `--rewrite-policy [safe|warn|skip]` Control how specifier rewrites behave when a matching target is missing (`safe` warns and skips, `warn` rewrites and warns, `skip` leaves specifiers untouched).
-- `--validate-specifiers` Validate that rewritten specifiers resolve to outputs; defaults to `true` when `--rewrite-policy` is `safe`.
 - `--detect-dual-package-hazard, -H [off|warn|error]` Flag mixed import/require usage of dual packages; `error` exits non-zero. If project-scope checks lack file paths, or file-scope checks return pathless diagnostics, Duel falls back to file-scope reporting during transforms so diagnostics include locations.
 - `--dual-package-hazard-allowlist <pkg>[,<pkg>...]` Comma-separated packages to ignore when reporting dual package hazards (e.g., `react`).
 - `--dual-package-hazard-scope [file|project]` Run hazard checks per file (default) or aggregate across the project.

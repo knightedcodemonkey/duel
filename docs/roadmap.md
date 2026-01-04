@@ -1,8 +1,8 @@
 # Roadmap
 
 - Consider auto-enabling `globals` mode when the build would hit TypeScript 58658 scenarios, with `--mode none` as an explicit opt-out.
-- Decide coupling of `--rewrite-policy` with `--validate-specifiers` (fail fast when `warn|safe` + validation=false, or document decoupling).
 - Consider a `--quiet` flag to reduce log chatter alongside warnings/hazards.
+- Revisit a gated `--validate-specifiers` flag for advanced workflows that need explicit validation separate from rewrite policy.
 - Memoize resolver existence checks to trim repeated sync fs hits during rewrite, if profiling shows it matters.
 - Optionally prune stale `_duel_*` temp workspaces on startup (behind env flag and skipped in CI) to keep project roots tidy.
 - Deprecate `copyMode=full` (announce as compatibility-only, plan removal if unused) and favor the selective copy path by default.

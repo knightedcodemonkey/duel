@@ -51,10 +51,6 @@ const cliOptions = [
     desc: 'Control specifier rewriting behavior.',
   },
   {
-    long: 'validate-specifiers',
-    desc: 'Validate rewritten specifiers against outputs (policy-derived by default).',
-  },
-  {
     long: 'detect-dual-package-hazard',
     short: 'H',
     value: '[off|warn|error]',
@@ -108,12 +104,11 @@ const printHelp = () => {
 }
 
 const init = async args => {
-  const argList = Array.isArray(args) ? args : []
   let parsed = null
 
   try {
     const { values } = parseArgs({
-      args: argList,
+      args,
       options: {
         project: {
           type: 'string',
@@ -143,9 +138,6 @@ const init = async args => {
         'rewrite-policy': {
           type: 'string',
           default: 'safe',
-        },
-        'validate-specifiers': {
-          type: 'boolean',
         },
         'detect-dual-package-hazard': {
           type: 'string',
@@ -197,7 +189,6 @@ const init = async args => {
       'exports-config': exportsConfig,
       'exports-validate': exportsValidate,
       'rewrite-policy': rewritePolicy,
-      'validate-specifiers': validateSpecifiers,
       'detect-dual-package-hazard': detectDualPackageHazard,
       'dual-package-hazard-allowlist': dualPackageHazardAllowlist,
       'dual-package-hazard-scope': dualPackageHazardScope,
@@ -311,27 +302,6 @@ const init = async args => {
 
       let modulesFinal = false
       let transformSyntaxFinal = false
-      const validateSpecifiersProvided = argList.some(
-        arg =>
-          arg === '--validate-specifiers' ||
-          arg === '--no-validate-specifiers' ||
-          arg.startsWith('--validate-specifiers='),
-      )
-      const validateSpecifiersDefault = rewritePolicy === 'skip' ? false : true
-
-      if (
-        rewritePolicy === 'safe' &&
-        validateSpecifiersProvided &&
-        validateSpecifiers === false
-      ) {
-        logError('--validate-specifiers cannot be disabled when --rewrite-policy is safe')
-
-        return false
-      }
-
-      const validateSpecifiersFinal = validateSpecifiersProvided
-        ? validateSpecifiers
-        : validateSpecifiersDefault
 
       if (mode) {
         if (mode === 'none') {
@@ -355,7 +325,6 @@ const init = async args => {
         exportsConfig,
         exportsValidate,
         rewritePolicy,
-        validateSpecifiers: validateSpecifiersFinal,
         detectDualPackageHazard,
         dualPackageHazardAllowlist: hazardAllowlist,
         dualPackageHazardScope,

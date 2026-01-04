@@ -900,26 +900,6 @@ describe('duel internals', () => {
     assert.deepEqual(filterDualPackageDiagnostics(undefined), [])
   })
 
-  it('rejects disabling validation when rewrite-policy is safe', async () => {
-    const tmp = makeTmp()
-    const tsconfigPath = join(tmp, 'tsconfig.json')
-    writeFileSync(tsconfigPath, JSON.stringify({ compilerOptions: { outDir: 'dist' } }))
-
-    try {
-      const result = await init([
-        '--project',
-        tsconfigPath,
-        '--rewrite-policy',
-        'safe',
-        '--no-validate-specifiers',
-      ])
-
-      assert.equal(result, false)
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-
   it('prints help and returns false when --help is passed', async () => {
     const result = await init(['--help'])
 

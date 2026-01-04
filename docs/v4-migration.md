@@ -4,7 +4,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 
 ## Breaking/Behavioral Changes
 
-- **Specifier rewrites now default to safer behavior.** `--rewrite-policy` now defaults to `safe`, and `--validate-specifiers` is forced on when policy is `safe`. Missing targets skip rewrites and emit warnings instead of silently rewriting.
+- **Specifier rewrites now default to safer behavior.** `--rewrite-policy` now defaults to `safe`; missing targets skip rewrites and emit warnings instead of silently rewriting.
 - **Dual-package hazard detection enabled by default.** `--detect-dual-package-hazard` now defaults to `warn`, and `--dual-package-hazard-scope` defaults to `file`. You may see new warnings (or errors if configured).
 - **Build pipeline runs in a temp workspace copy.** Dual builds no longer mutate the root `package.json`; a temp copy is created with an adjusted `type`. External tools that watched in-place `package.json` edits will see different behavior.
   - **IMPORTANT:** The temp-copy flow adds some I/O for large repos (copying sources/reference packages and running transforms there). `node_modules` is skipped; when references exist, existing `dist` may be reused. Very large projects may see modestly slower runs compared to the old in-place mutation.
@@ -18,7 +18,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 
 ## Restoring v3-like Behavior
 
-- **Specifier rewrites:** use `--rewrite-policy warn --validate-specifiers false` to continue rewriting even when targets are missing (previous behavior). To fully bypass rewrites, set `--rewrite-policy skip`.
+- **Specifier rewrites:** use `--rewrite-policy warn` to continue rewriting even when targets are missing (previous behavior). To fully bypass rewrites, set `--rewrite-policy skip`.
 - **Hazard detection:** disable by passing `--detect-dual-package-hazard off` (or set scope to `project` only if you want aggregated warnings).
 - **Build/package.json side effects:** if tooling depended on in-place `package.json` mutation, update it to read outputs from the temp dual build outputs (`dist/esm` / `dist/cjs` or `outDir` variants). No flag restores the old mutation pattern.
 - **TypeScript references:** if build mode changes output undesirably, remove `references` or run your own `tsc -p` before calling `duel`.
@@ -27,7 +27,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 
 1. Pick a rewrite policy:
    - Safety-first (default): keep `--rewrite-policy safe` (default) and address any missing-target warnings by fixing paths or adding files.
-   - Legacy: add `--rewrite-policy warn --validate-specifiers false` to mimic v3 rewrites.
+   - Legacy: set `--rewrite-policy warn` to mimic v3 rewrites.
 2. Decide on hazard handling:
    - Keep defaults to surface hazards.
    - Silence: `--detect-dual-package-hazard off`.
@@ -38,7 +38,6 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 ## New/Notable Flags
 
 - `--rewrite-policy [safe|warn|skip]` (default: `safe`)
-- `--validate-specifiers` (derived from `--rewrite-policy`: on for `safe|warn`, off for `skip`; advanced override only)
 - `--detect-dual-package-hazard [off|warn|error]` (default: `warn`)
 - `--dual-package-hazard-scope [file|project]` (default: `file`)
 - `--dual-package-hazard-allowlist <pkg1,pkg2>`
