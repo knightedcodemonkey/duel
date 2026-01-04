@@ -41,6 +41,7 @@ This guide highlights behavior changes introduced in v4 and how to adapt existin
 - `--validate-specifiers` (defaults to `true` when policy is `safe`; otherwise `false`)
 - `--detect-dual-package-hazard [off|warn|error]` (default: `warn`)
 - `--dual-package-hazard-scope [file|project]` (default: `file`)
+- `--dual-package-hazard-allowlist <pkg1,pkg2>`
 - `--exports-config <path>`
 - `--exports-validate`
 - `--verbose`
