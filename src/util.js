@@ -369,14 +369,9 @@ const generateExports = async options => {
     }
   }
 
-  const esmFiles = []
   for await (const file of glob(`${esmRootPosix}/**/*.{js,mjs,d.ts,d.mts}`, {
     ignore: esmIgnore,
   })) {
-    esmFiles.push(file)
-  }
-
-  for (const file of esmFiles) {
     if (/\.d\.(ts|mts)$/.test(file)) {
       recordPath('types', file, esmRoot)
     } else {
@@ -384,14 +379,9 @@ const generateExports = async options => {
     }
   }
 
-  const cjsFiles = []
   for await (const file of glob(`${cjsRootPosix}/**/*.{js,cjs,d.ts,d.cts}`, {
     ignore: cjsIgnore,
   })) {
-    cjsFiles.push(file)
-  }
-
-  for (const file of cjsFiles) {
     if (/\.d\.(ts|cts)$/.test(file)) {
       recordPath('types', file, cjsRoot)
     } else {

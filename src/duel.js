@@ -67,6 +67,16 @@ const logDiagnostics = (diags, projectDir, hazardAllowlist = null) => {
   return hasError
 }
 
+const collectGlob = async (pattern, options) => {
+  const files = []
+
+  for await (const file of glob(pattern, options)) {
+    files.push(file)
+  }
+
+  return files
+}
+
 const duel = async args => {
   const ctx = await init(args)
 
@@ -756,15 +766,12 @@ const duel = async args => {
          * Transform ambiguous modules for the target dual build.
          * @see https://github.com/microsoft/TypeScript/issues/58658
          */
-        const toTransform = []
-        for await (const file of glob(
+        const toTransform = await collectGlob(
           `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
           {
             ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
-        )) {
-          toTransform.push(file)
-        }
+        )
         let transformDiagnosticsError = false
         /**
          * If project-scope hazards didn't surface file paths, fall back to
@@ -860,15 +867,12 @@ const duel = async args => {
         }
         const dualGlob =
           dualTarget === 'commonjs' ? '**/*{.js,.cjs,.d.ts}' : '**/*{.js,.mjs,.d.ts}'
-        const filenames = []
-        for await (const file of glob(
+        const filenames = await collectGlob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
             ignore: `${absoluteDualOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
-        )) {
-          filenames.push(file)
-        }
+        )
         const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
         let rewriteDiagnosticsError = false
         const handleRewriteDiagnostic = diag => {
@@ -895,15 +899,12 @@ const duel = async args => {
         })
 
         if (dirs && originalType === 'commonjs') {
-          const primaryFiles = []
-          for await (const file of glob(
+          const primaryFiles = await collectGlob(
             `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
             {
               ignore: `${primaryOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
             },
-          )) {
-            primaryFiles.push(file)
-          }
+          )
 
           await rewriteSpecifiersAndExtensions(primaryFiles, {
             target: 'commonjs',
