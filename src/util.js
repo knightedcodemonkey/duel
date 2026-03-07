@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url'
-import { realpath, readFile, writeFile, symlink, rm } from 'node:fs/promises'
+import { realpath, readFile, writeFile, symlink, rm, glob } from 'node:fs/promises'
 import { existsSync, rmSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { cwd, platform } from 'node:process'
@@ -14,7 +14,6 @@ import {
   normalize as normalizePath,
 } from 'node:path'
 
-import { glob } from 'glob'
 import { findUp } from 'find-up'
 
 const COLORS = {
@@ -336,7 +335,11 @@ const generateExports = async options => {
     }
     const baseEntry = baseMap.get(baseKey) ?? {}
 
-    baseEntry[kind] = withDot
+    if (kind === 'types') {
+      baseEntry.types = baseEntry.types ?? withDot
+    } else {
+      baseEntry[kind] = withDot
+    }
     baseMap.set(baseKey, baseEntry)
 
     const subpath = useEntriesSubpaths
@@ -349,7 +352,9 @@ const generateExports = async options => {
 
       if (mappedSubpath) {
         const subEntry = subpathMap.get(mappedSubpath) ?? {}
-        subEntry.types = useWildcard ? toWildcardValue(withDot) : withDot
+        const nextType = useWildcard ? toWildcardValue(withDot) : withDot
+
+        subEntry.types = subEntry.types ?? nextType
         subpathMap.set(mappedSubpath, subEntry)
       }
 
@@ -364,11 +369,9 @@ const generateExports = async options => {
     }
   }
 
-  const esmFiles = await glob(`${esmRootPosix}/**/*.{js,mjs,d.ts,d.mts}`, {
+  for await (const file of glob(`${esmRootPosix}/**/*.{js,mjs,d.ts,d.mts}`, {
     ignore: esmIgnore,
-  })
-
-  for (const file of esmFiles) {
+  })) {
     if (/\.d\.(ts|mts)$/.test(file)) {
       recordPath('types', file, esmRoot)
     } else {
@@ -376,11 +379,9 @@ const generateExports = async options => {
     }
   }
 
-  const cjsFiles = await glob(`${cjsRootPosix}/**/*.{js,cjs,d.ts,d.cts}`, {
+  for await (const file of glob(`${cjsRootPosix}/**/*.{js,cjs,d.ts,d.cts}`, {
     ignore: cjsIgnore,
-  })
-
-  for (const file of cjsFiles) {
+  })) {
     if (/\.d\.(ts|cts)$/.test(file)) {
       recordPath('types', file, cjsRoot)
     } else {

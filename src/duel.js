@@ -4,11 +4,10 @@ import { argv } from 'node:process'
 import { pathToFileURL } from 'node:url'
 import { join, dirname, resolve, relative, sep } from 'node:path'
 import { spawn } from 'node:child_process'
-import { writeFile, rm, mkdir, cp, access, readdir } from 'node:fs/promises'
+import { writeFile, rm, mkdir, cp, access, readdir, glob } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
-import { glob } from 'glob'
 import { findUp } from 'find-up'
 import { transform, collectProjectDualPackageHazards } from '@knighted/module'
 import { getTsconfig, parseTsconfig } from 'get-tsconfig'
@@ -66,6 +65,16 @@ const logDiagnostics = (diags, projectDir, hazardAllowlist = null) => {
   }
 
   return hasError
+}
+
+const collectGlob = async (pattern, options) => {
+  const files = []
+
+  for await (const file of glob(pattern, options)) {
+    files.push(file)
+  }
+
+  return files
 }
 
 const duel = async args => {
@@ -757,7 +766,7 @@ const duel = async args => {
          * Transform ambiguous modules for the target dual build.
          * @see https://github.com/microsoft/TypeScript/issues/58658
          */
-        const toTransform = await glob(
+        const toTransform = await collectGlob(
           `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
           {
             ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
@@ -858,7 +867,7 @@ const duel = async args => {
         }
         const dualGlob =
           dualTarget === 'commonjs' ? '**/*{.js,.cjs,.d.ts}' : '**/*{.js,.mjs,.d.ts}'
-        const filenames = await glob(
+        const filenames = await collectGlob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
             ignore: `${absoluteDualOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
@@ -890,7 +899,7 @@ const duel = async args => {
         })
 
         if (dirs && originalType === 'commonjs') {
-          const primaryFiles = await glob(
+          const primaryFiles = await collectGlob(
             `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
             {
               ignore: `${primaryOutDir.replace(/\\/g, '/')}/**/node_modules/**`,

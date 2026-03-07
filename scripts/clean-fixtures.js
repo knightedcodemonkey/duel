@@ -1,16 +1,23 @@
-import { rm } from 'node:fs/promises'
-
-import { glob } from 'glob'
+import { rm, glob } from 'node:fs/promises'
 
 const roots = ['test/__fixtures__']
 
 const run = async () => {
   const targets = new Set()
-  const globOpts = { dot: true, windowsPathsNoEscape: true }
+
+  const collect = async pattern => {
+    const matches = []
+
+    for await (const entry of glob(pattern)) {
+      matches.push(entry)
+    }
+
+    return matches
+  }
 
   for (const root of roots) {
-    const caches = await glob(`${root}/**/.duel-cache`, globOpts)
-    const dists = await glob(`${root}/**/dist`, globOpts)
+    const caches = await collect(`${root}/**/.duel-cache`)
+    const dists = await collect(`${root}/**/dist`)
 
     for (const dir of [...caches, ...dists]) {
       targets.add(dir)
