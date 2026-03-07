@@ -5,10 +5,10 @@ import { pathToFileURL } from 'node:url'
 import { join, dirname, resolve, relative, sep } from 'node:path'
 import { spawn } from 'node:child_process'
 import { writeFile, rm, mkdir, cp, access, readdir } from 'node:fs/promises'
+import { glob } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
-import { glob } from 'glob'
 import { findUp } from 'find-up'
 import { transform, collectProjectDualPackageHazards } from '@knighted/module'
 import { getTsconfig, parseTsconfig } from 'get-tsconfig'
@@ -757,12 +757,15 @@ const duel = async args => {
          * Transform ambiguous modules for the target dual build.
          * @see https://github.com/microsoft/TypeScript/issues/58658
          */
-        const toTransform = await glob(
+        const toTransform = []
+        for await (const file of glob(
           `${subDir.replace(/\\/g, '/')}/**/*{.js,.jsx,.ts,.tsx}`,
           {
             ignore: `${subDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
-        )
+        )) {
+          toTransform.push(file)
+        }
         let transformDiagnosticsError = false
         /**
          * If project-scope hazards didn't surface file paths, fall back to
@@ -858,12 +861,15 @@ const duel = async args => {
         }
         const dualGlob =
           dualTarget === 'commonjs' ? '**/*{.js,.cjs,.d.ts}' : '**/*{.js,.mjs,.d.ts}'
-        const filenames = await glob(
+        const filenames = []
+        for await (const file of glob(
           `${absoluteDualOutDir.replace(/\\/g, '/')}/${dualGlob}`,
           {
             ignore: `${absoluteDualOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
           },
-        )
+        )) {
+          filenames.push(file)
+        }
         const rewriteSyntaxMode = dualTarget === 'commonjs' ? true : syntaxMode
         let rewriteDiagnosticsError = false
         const handleRewriteDiagnostic = diag => {
@@ -890,12 +896,15 @@ const duel = async args => {
         })
 
         if (dirs && originalType === 'commonjs') {
-          const primaryFiles = await glob(
+          const primaryFiles = []
+          for await (const file of glob(
             `${primaryOutDir.replace(/\\/g, '/')}/**/*{.js,.cjs,.d.ts}`,
             {
               ignore: `${primaryOutDir.replace(/\\/g, '/')}/**/node_modules/**`,
             },
-          )
+          )) {
+            primaryFiles.push(file)
+          }
 
           await rewriteSpecifiersAndExtensions(primaryFiles, {
             target: 'commonjs',
