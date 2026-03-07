@@ -850,7 +850,9 @@ const duel = async args => {
           await cp(shadowDualOutDir, absoluteDualOutDir, { recursive: true })
         } catch (err) {
           if (err?.code === 'ENOENT') {
-            throw new Error(`Dual build output not found at ${shadowDualOutDir}`)
+            throw new Error(`Dual build output not found at ${shadowDualOutDir}`, {
+              cause: err,
+            })
           }
           throw err
         }
