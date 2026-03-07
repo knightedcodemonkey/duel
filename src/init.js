@@ -104,7 +104,7 @@ const printHelp = () => {
 }
 
 const init = async args => {
-  let parsed = null
+  let parsed
 
   try {
     const { values } = parseArgs({
@@ -197,8 +197,8 @@ const init = async args => {
       'copy-mode': copyMode,
     } = parsed
     let configPath = resolve(project)
-    let stats = null
-    let pkg = null
+    let stats
+    let pkg
 
     if (mode && !['none', 'globals', 'full'].includes(mode)) {
       logError('--mode expects one of: none | globals | full')

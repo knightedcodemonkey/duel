@@ -200,11 +200,13 @@ const readExportsConfig = async (configPath, pkgDir) => {
       : resolve(cwd(), configPath)
   const raw = await readFile(abs, 'utf8')
 
-  let parsed = null
+  let parsed
   try {
     parsed = JSON.parse(raw)
   } catch (err) {
-    throw new Error(`Invalid JSON in --exports-config (${configPath}): ${err.message}`)
+    throw new Error(`Invalid JSON in --exports-config (${configPath}): ${err.message}`, {
+      cause: err,
+    })
   }
 
   const { entries, main } = parsed
