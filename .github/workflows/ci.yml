@@ -13,8 +13,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: CI (${{ matrix.os }}, Node ${{ matrix.version }}, shard ${{ matrix.shard }}/2)
+  quality-pr:
+    name: Quality (ubuntu-latest, Node 26.2.0)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+      - name: Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: '26.2.0'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Save error log
+        uses: actions/upload-artifact@v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: npm-debug-log-pr-quality-${{ github.run_id }}
+          path: npm-debug.log
+      - name: Lint
+        run: npm run lint
+      - name: Pack
+        run: npm pack
+
+  test-pr:
+    name: Test PR (ubuntu-latest, Node 26.2.0, shard ${{ matrix.shard }}/2)
+    if: ${{ github.event_name == 'pull_request' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+      - name: Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: '26.2.0'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Save error log
+        uses: actions/upload-artifact@v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: npm-debug-log-pr-test-${{ matrix.shard }}-${{ github.run_id }}
+          path: npm-debug.log
+      - name: Test
+        run: npm test -- --shard=${{ matrix.shard }}/2
+
+  ci-main:
+    name: CI Main (${{ matrix.os }}, Node ${{ matrix.version }}, shard ${{ matrix.shard }}/2)
+    if: ${{ github.event_name == 'push' }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,7 +86,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         if: ${{ failure() }}
         with:
-          name: npm-debug-log-${{ hashFiles('package-lock.json') }}
+          name: npm-debug-log-main-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shard }}-${{ github.run_id }}
           path: npm-debug.log
       - name: Lint
         run: npm run lint

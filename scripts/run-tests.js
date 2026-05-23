@@ -53,7 +53,13 @@ const parseCliArgs = args => {
     }
 
     if (arg.startsWith('--shard-index=')) {
-      shardIndex = parseInteger(arg.slice('--shard-index='.length))
+      const parsed = parseInteger(arg.slice('--shard-index='.length))
+
+      if (parsed === undefined || parsed < 1) {
+        throw new Error('--shard-index expects a positive integer')
+      }
+
+      shardIndex = parsed
       continue
     }
 
@@ -64,13 +70,25 @@ const parseCliArgs = args => {
         throw new Error('--shard-index expects a positive integer')
       }
 
-      shardIndex = parseInteger(next)
+      const parsed = parseInteger(next)
+
+      if (parsed === undefined || parsed < 1) {
+        throw new Error('--shard-index expects a positive integer')
+      }
+
+      shardIndex = parsed
       i += 1
       continue
     }
 
     if (arg.startsWith('--total-shards=')) {
-      totalShards = parseInteger(arg.slice('--total-shards='.length))
+      const parsed = parseInteger(arg.slice('--total-shards='.length))
+
+      if (parsed === undefined || parsed < 1) {
+        throw new Error('--total-shards expects a positive integer')
+      }
+
+      totalShards = parsed
       continue
     }
 
@@ -81,7 +99,13 @@ const parseCliArgs = args => {
         throw new Error('--total-shards expects a positive integer')
       }
 
-      totalShards = parseInteger(next)
+      const parsed = parseInteger(next)
+
+      if (parsed === undefined || parsed < 1) {
+        throw new Error('--total-shards expects a positive integer')
+      }
+
+      totalShards = parsed
       i += 1
       continue
     }
@@ -101,9 +125,17 @@ const resolveShard = ({ shard, shardIndex, totalShards }) => {
     process.env.DUEL_TEST_TOTAL_SHARDS ?? process.env.TEST_TOTAL_SHARDS,
   )
 
-  const pair = parseShardPair(shard ?? envShard)
+  const shardValue = shard ?? envShard
 
-  if (pair) return pair
+  if (shardValue !== undefined) {
+    const pair = parseShardPair(shardValue)
+
+    if (!pair) {
+      throw new Error('--shard expects a value like 1/2')
+    }
+
+    return pair
+  }
 
   const index = shardIndex ?? envShardIndex
   const total = totalShards ?? envTotalShards
