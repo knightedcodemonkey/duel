@@ -2,10 +2,11 @@
   "compilerOptions": {
     "module": "NodeNext",
     "declaration": true,
+    "rootDir": "src",
     "outDir": "dist",
     "strict": true,
     "allowJs": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   },
-  "include": ["src"],
+  "include": ["src"]
 }
