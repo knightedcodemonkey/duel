@@ -19,7 +19,7 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 
 ## Requirements
 
-- Node >= 22.21.1 (<23) or >= 24 (<25)
+- Node >= 22.21.1 (<23), >= 24 (<25), or >= 26 (<27)
 
 ## Example
 

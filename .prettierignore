@@ -1,0 +1,3 @@
+# Fixture tsconfig files intentionally use JSONC patterns (comments, dangling commas)
+# to validate parser/compiler behavior. Do not auto-format them with Prettier.
+test/__fixtures__/**/tsconfig*.json

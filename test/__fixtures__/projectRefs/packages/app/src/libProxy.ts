@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs'
 
 const req = createRequire(import.meta.url)
 const from = dirname(fileURLToPath(import.meta.url))
-const findDistRoot = start => {
+const findDistRoot = (start: string) => {
   // Walk up until we find the emitted CJS lib; tolerates alternate outDir names and nested dist folders.
   let dir = start
 

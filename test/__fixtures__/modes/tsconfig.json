@@ -5,6 +5,8 @@
     "esModuleInterop": true,
     "declaration": true,
     "strict": false,
+    "types": ["node"],
+    "rootDir": "src",
     "outDir": "dist"
   },
   "include": ["src"]

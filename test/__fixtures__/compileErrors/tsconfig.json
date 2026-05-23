@@ -5,6 +5,7 @@
     "moduleResolution": "Node",
     "declaration": true,
     "strict": true,
+    "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2015"]
   },

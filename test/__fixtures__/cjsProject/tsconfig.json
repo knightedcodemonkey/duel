@@ -4,6 +4,8 @@
     "module": "NodeNext",
     "declaration": true,
     "strict": false,
+    "types": ["node"],
+    "rootDir": "src",
     "outDir": "dist",
     "lib": ["DOM", "ES2015"]
   },
