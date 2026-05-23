@@ -3,6 +3,7 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
     "composite": true,
     "declaration": true,
     "allowJs": true,
