@@ -6,8 +6,9 @@
     "esModuleInterop": true,
     "declaration": true,
     "strict": false,
+    "rootDir": "src",
     "outDir": "dist",
-    "lib": ["DOM", "ES2015"], // dangle comma
+    "lib": ["DOM", "ES2015"] // dangle comma
   },
   "include": ["src"]
 }

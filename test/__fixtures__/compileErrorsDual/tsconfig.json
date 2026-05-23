@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "module": "NodeNext",
+    "rootDir": "src",
     "outDir": "dist"
   },
   "include": ["./src/**/*.ts"]
