@@ -217,7 +217,10 @@ describe('duel', () => {
     const map = JSON.parse(await readFile(outMapFile, 'utf8'))
     assert.equal(map.file, 'index.cjs')
 
-    const traced = originalPositionFor(new TraceMap(map), findPosition(code, 'greet'))
+    const traced = originalPositionFor(
+      new TraceMap(map),
+      findPosition(code, 'function greet'),
+    )
     assert.ok(traced.source?.endsWith('src/index.ts'))
     assert.ok((traced.line ?? 0) > 0)
 
@@ -1011,7 +1014,7 @@ describe('duel', () => {
         'export const plugin = () => {',
         '    return {',
         "        name: 'plugin',",
-        '        enforce',
+        '        enforce,',
         '    };',
         '};',
         '',
@@ -1027,7 +1030,7 @@ describe('duel', () => {
         'const plugin = () => {',
         '    return {',
         "        name: 'plugin',",
-        '        enforce: enforce_js_1.enforce',
+        '        enforce: enforce_js_1.enforce,',
         '    };',
         '};',
         'exports.plugin = plugin;',

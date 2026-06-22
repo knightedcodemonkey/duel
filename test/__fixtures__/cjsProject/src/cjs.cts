@@ -1,5 +1,5 @@
 /*
-import type { ESM } from './esm.mjs' assert { 'resolution-mode': 'import' };
+import type { ESM } from './esm.mjs' with { 'resolution-mode': 'import' };
 
 interface CJS {
   cjs: boolean,
@@ -22,16 +22,16 @@ export { func }
 export type { CJS }
 */
 
-import MagicString from "magic-string"
+import MagicString from 'magic-string'
 
 interface CJS {
-  cjs: boolean;
-  magic: MagicString;
+  cjs: boolean
+  magic: MagicString
 }
 
 const cjs: CJS = {
   cjs: true,
-  magic: new MagicString('magic')
+  magic: new MagicString('magic'),
 }
 
 export { cjs }

@@ -1,8 +1,8 @@
-import type { ESM } from './esm.mjs' assert { 'resolution-mode': 'import' };
+import type { ESM } from './esm.mjs' with { 'resolution-mode': 'import' }
 
 interface CJS {
-  cjs: boolean,
-  esm: ESM;
+  cjs: boolean
+  esm: ESM
 }
 
 const func = async () => {
@@ -10,7 +10,7 @@ const func = async () => {
 
   const cjs: CJS = {
     cjs: true,
-    esm
+    esm,
   }
 
   return cjs
