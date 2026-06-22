@@ -217,7 +217,10 @@ describe('duel', () => {
     const map = JSON.parse(await readFile(outMapFile, 'utf8'))
     assert.equal(map.file, 'index.cjs')
 
-    const traced = originalPositionFor(new TraceMap(map), findPosition(code, 'greet'))
+    const traced = originalPositionFor(
+      new TraceMap(map),
+      findPosition(code, 'function greet'),
+    )
     assert.ok(traced.source?.endsWith('src/index.ts'))
     assert.ok((traced.line ?? 0) > 0)
 

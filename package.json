@@ -61,11 +61,15 @@
     "url": "https://github.com/knightedcodemonkey/duel/issues"
   },
   "peerDependencies": {
-    "typescript": ">=5.5.0 <7",
-    "typescript-next": "npm:typescript@next"
+    "typescript": ">=5.5.0 <8",
+    "typescript-next": "npm:typescript@next",
+    "typescript-rc": "npm:typescript@rc"
   },
   "peerDependenciesMeta": {
     "typescript-next": {
+      "optional": true
+    },
+    "typescript-rc": {
       "optional": true
     }
   },
@@ -84,7 +88,7 @@
     "prettier": "^3.6.2",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vite": "^7.3.2"
+    "vite": "^8.0.16"
   },
   "dependencies": {
     "@jridgewell/gen-mapping": "^0.3.13",
