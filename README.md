@@ -20,6 +20,7 @@ Tool for building a Node.js [dual package](https://nodejs.org/api/packages.html#
 ## Requirements
 
 - Node >= 22.21.1 (<23), >= 24 (<25), or >= 26 (<27)
+- TypeScript >= 5.5.0 and < 8
 
 ## Example
 
