@@ -473,9 +473,27 @@ const duel = async args => {
         )}ms.`,
       )
     }
-    const buildPlan = await collectCompileFilesWithReferences({
-      includeConfig: shouldIncludeConfig,
-    })
+
+    if (!tsc) {
+      handleErrorAndExit(
+        "TypeScript compiler (tsc) not found. Please install 'typescript' in this workspace.",
+      )
+    }
+
+    /*
+     * Preflight all config/reference/package paths before invoking tsc so
+     * out-of-bound references fail fast without writing build artifacts.
+     */
+    let buildPlan
+
+    try {
+      buildPlan = await collectCompileFilesWithReferences({
+        includeConfig: shouldIncludeConfig,
+      })
+    } catch ({ message }) {
+      handleErrorAndExit(message)
+    }
+
     const boundaryPaths = new Set([
       ...buildPlan.configFiles,
       ...buildPlan.referenceConfigFiles,
