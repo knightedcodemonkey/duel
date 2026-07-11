@@ -33,7 +33,12 @@ describe('duel monorepos', () => {
      * cross-spawn handles Windows .cmd files without needing shell.
      * Prefer npm ci so fixture lockfiles are not rewritten during tests.
      */
-    spawn.sync('npm', ['ci'], { cwd: npm })
+    const { status } = spawn.sync('npm', ['ci'], {
+      cwd: npm,
+      stdio: 'inherit',
+    })
+
+    assert.equal(status, 0)
 
     // Build the packages (dependency first)
     await duel(['-p', npmTwo, '-k', npmTwo, '--mode', 'globals'])
