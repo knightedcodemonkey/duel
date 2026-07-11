@@ -475,9 +475,10 @@ const duel = async args => {
     }
 
     if (!tsc) {
-      handleErrorAndExit(
+      logError(
         "TypeScript compiler (tsc) not found. Please install 'typescript' in this workspace.",
       )
+      process.exit(1)
     }
 
     /*
@@ -490,8 +491,9 @@ const duel = async args => {
       buildPlan = await collectCompileFilesWithReferences({
         includeConfig: shouldIncludeConfig,
       })
-    } catch ({ message }) {
-      handleErrorAndExit(message)
+    } catch (err) {
+      logError(err?.message ?? String(err))
+      process.exit(1)
     }
 
     const boundaryPaths = new Set([
