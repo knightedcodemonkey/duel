@@ -474,6 +474,38 @@ const duel = async args => {
       )
     }
 
+    if (!tsc) {
+      logError(
+        "TypeScript compiler (tsc) not found. Please install 'typescript' in this workspace.",
+      )
+      process.exit(1)
+    }
+
+    /*
+     * Preflight all config/reference/package paths before invoking tsc so
+     * out-of-bound references fail fast without writing build artifacts.
+     */
+    let buildPlan
+
+    try {
+      buildPlan = await collectCompileFilesWithReferences({
+        includeConfig: shouldIncludeConfig,
+      })
+    } catch (err) {
+      logError(err?.message ?? String(err))
+      process.exit(1)
+    }
+
+    const boundaryPaths = new Set([
+      ...buildPlan.configFiles,
+      ...buildPlan.referenceConfigFiles,
+      ...buildPlan.packageJsons,
+    ])
+
+    for (const path of boundaryPaths) {
+      requireWorkspaceRelative(path)
+    }
+
     log('Starting primary build...')
 
     let success = false
@@ -515,8 +547,7 @@ const duel = async args => {
         }
       }
 
-      const { compileFiles, configFiles, referenceConfigFiles, packageJsons } =
-        await collectCompileFilesWithReferences({ includeConfig: shouldIncludeConfig })
+      const { compileFiles, configFiles, referenceConfigFiles, packageJsons } = buildPlan
       const sourceFiles = compileFiles.filter(file => {
         const isSupported = /\.(?:[cm]?jsx?|[cm]?tsx?)$/i.test(file)
         const isDeclaration = /\.d\.[cm]?tsx?$/i.test(file)

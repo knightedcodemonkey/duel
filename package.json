@@ -1,6 +1,6 @@
 {
   "name": "@knighted/duel",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "TypeScript dual packages.",
   "type": "module",
   "main": "dist/esm/duel.js",
@@ -62,32 +62,28 @@
   },
   "peerDependencies": {
     "typescript": ">=5.5.0 <8",
-    "typescript-next": "npm:typescript@next",
-    "typescript-rc": "npm:typescript@rc"
+    "typescript-next": "npm:typescript@next"
   },
   "peerDependenciesMeta": {
     "typescript-next": {
-      "optional": true
-    },
-    "typescript-rc": {
       "optional": true
     }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tsconfig/recommended": "^1.0.10",
-    "@types/node": "^25.9.1",
+    "@types/node": "^26.1.1",
     "c8": "^11.0.0",
     "cross-spawn": "^7.0.6",
-    "eslint": "^10.4.0",
-    "eslint-plugin-n": "^18.0.1",
+    "eslint": "^10.7.0",
+    "eslint-plugin-n": "^18.2.2",
     "globals": "^17.6.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "node-module-type": "^1.0.4",
     "prettier": "^3.6.2",
-    "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
     "vite": "^8.0.16"
   },
   "dependencies": {
