@@ -473,6 +473,18 @@ const duel = async args => {
         )}ms.`,
       )
     }
+    const buildPlan = await collectCompileFilesWithReferences({
+      includeConfig: shouldIncludeConfig,
+    })
+    const boundaryPaths = new Set([
+      ...buildPlan.configFiles,
+      ...buildPlan.referenceConfigFiles,
+      ...buildPlan.packageJsons,
+    ])
+
+    for (const path of boundaryPaths) {
+      requireWorkspaceRelative(path)
+    }
 
     log('Starting primary build...')
 
@@ -515,8 +527,7 @@ const duel = async args => {
         }
       }
 
-      const { compileFiles, configFiles, referenceConfigFiles, packageJsons } =
-        await collectCompileFilesWithReferences({ includeConfig: shouldIncludeConfig })
+      const { compileFiles, configFiles, referenceConfigFiles, packageJsons } = buildPlan
       const sourceFiles = compileFiles.filter(file => {
         const isSupported = /\.(?:[cm]?jsx?|[cm]?tsx?)$/i.test(file)
         const isDeclaration = /\.d\.[cm]?tsx?$/i.test(file)
