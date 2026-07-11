@@ -25,12 +25,16 @@ jobs:
         run: npm ci
       - name: Switch TypeScript to next
         run: npm i --no-save --force typescript@next
+      - name: Show TypeScript Version
+        run: node -p "require('typescript/package.json').version"
       - name: Save error log
         uses: actions/upload-artifact@v7.0.1
         if: ${{ failure() }}
         with:
           name: npm-debug-log-ts-next-${{ hashFiles('package-lock.json') }}
           path: npm-debug.log
+      - name: Pack
+        run: npm pack
       - name: Lint
         run: npm run lint
       - name: Test
